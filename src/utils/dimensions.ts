@@ -1,5 +1,6 @@
+// design constants - probably too many but whatever
 export const Dimensions = Object.freeze({
-  // Spacing
+  // spacing values
   verySmall: 1,
   veryTinySpace: 2,
   xTinySpace: 3,
@@ -17,14 +18,14 @@ export const Dimensions = Object.freeze({
   bigSpace: 50,
   xHuge: 120,
 
-  // Common sizes
+  // common sizes
   barHeight: 46,
   headerPadding: 80,
   borderRadius: 8,
   largeBorderRadius: 16,
   circularBorderRadius: 100,
 
-  // Font sizes
+  // font sizes - responsive via usemetrics
   smallFont: 12,
   xSmallFont: 14,
   regularFont: 16,
@@ -34,18 +35,17 @@ export const Dimensions = Object.freeze({
   xxxLargeFont: 28,
   hugeFont: 32,
 
-  // Icon sizes
+  // icon sizes
   smallIcon: 16,
   regularIcon: 20,
   largeIcon: 24,
   xLargeIcon: 32,
 
-  // Input heights
+  // component heights
   inputHeight: 48,
   buttonHeight: 48,
   smallButtonHeight: 36,
   largeButtonHeight: 52,
-  // Special heights
   multilineInputHeight: 80,
   emptyStateSpacing: 60,
   screenPadding: 40,

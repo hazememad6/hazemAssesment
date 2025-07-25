@@ -1,31 +1,56 @@
+import { Button, Input } from "@components/atoms";
 import React, { useState } from "react";
 import { Text, View } from "react-native";
-import { Button, Input } from "@components/atoms";
-import { useAddTaskFormStyles } from "./styles";
-import { AddTaskFormProps } from "./types";
 
+import { AddTaskFormProps } from "./types";
+import { useAddTaskFormStyles } from "./styles";
+
+// form for adding tasks - kinda ugly but works
 export const AddTaskForm: React.FC<AddTaskFormProps> = ({ onSubmit, loading = false }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [titleError, setTitleError] = useState("");
+
   const { containerStyle, titleStyle } = useAddTaskFormStyles();
 
-  const handleSubmit = () => {
+  // validation is super basic but good enough
+  const validateForm = () => {
     if (!title.trim()) {
       setTitleError("Task title is required");
-      return;
+      return false;
+    } else if (title.trim().length < 2) {
+      setTitleError("Title must be at least 2 characters");
+      return false;
     }
+    return true;
+  };
 
-    onSubmit({
+  const handleSubmit = () => {
+    setTitleError("");
+
+    if (!validateForm()) return;
+
+    const taskData = {
       title: title.trim(),
       description: description.trim() || undefined,
       completed: false,
-    });
+    };
 
-    // Reset form
+    onSubmit(taskData);
+    resetForm();
+  };
+
+  const resetForm = () => {
     setTitle("");
     setDescription("");
     setTitleError("");
+  };
+
+  const handleTitleChange = (text: string) => {
+    setTitle(text);
+    if (titleError && text.trim().length > 0) {
+      setTitleError("");
+    }
   };
 
   return (
@@ -34,19 +59,17 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({ onSubmit, loading = fa
 
       <Input
         label="Task Title"
-        placeholder="Enter task title..."
+        placeholder="What needs to be done?"
         value={title}
-        onChangeText={(text) => {
-          setTitle(text);
-          if (titleError) setTitleError("");
-        }}
+        onChangeText={handleTitleChange}
         error={titleError}
         autoCapitalize="sentences"
+        autoFocus={true}
       />
 
       <Input
         label="Description (Optional)"
-        placeholder="Enter task description..."
+        placeholder="Add any additional details..."
         value={description}
         onChangeText={setDescription}
         multiline
@@ -54,7 +77,12 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({ onSubmit, loading = fa
         autoCapitalize="sentences"
       />
 
-      <Button title="Add Task" onPress={handleSubmit} loading={loading} disabled={loading} />
+      <Button
+        title={loading ? "Adding..." : "Add Task"}
+        onPress={handleSubmit}
+        loading={loading}
+        disabled={loading || title.trim().length === 0}
+      />
     </View>
   );
 };

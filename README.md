@@ -92,7 +92,6 @@ react-hook-form ^7.61.1        // Form management
 # Code Quality
 eslint ^9.25.0               # Linting
 prettier ^3.5.3              # Code formatting
-husky ^9.1.7                 # Git hooks
 
 # Testing Framework
 jest ^29.7.0                 # Test runner
@@ -158,14 +157,15 @@ src/components/atoms/
 
 // Molecules - Composed components
 src/components/molecules/
-├── TaskItem/              # Task list item
+├── TaskItem/              # Task list item with animations
 ├── AddTaskModal/          # Task creation modal
 ├── AddTaskForm/           # Task form
 └── InputFormController/   # Form input controller
 
 // Organisms - Complex components
 src/components/organisms/
-└── TaskList/              # Main task list component
+├── TaskList/              # Main task list component
+└── Header/                # Header with actions and navigation
 ```
 
 ### Feature-Based Organization
@@ -228,8 +228,8 @@ const handleBiometricLogin = async () => {
 export const useAddTaskMutation = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: taskApi.createTask,
+  return useApiMutation(MUTATION_KEYS.tasks.add, (taskData) => taskApi.createTask(taskData), {
+    invalidate: [QUERY_KEYS.tasks.all],
     onMutate: async (taskData) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: QUERY_KEYS.tasks.all });
@@ -239,7 +239,7 @@ export const useAddTaskMutation = () => {
 
       // Optimistically update with temporary ID
       const optimisticTask: Task = {
-        id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         title: taskData.title,
         description: taskData.description || "",
         completed: taskData.completed || false,
@@ -249,6 +249,14 @@ export const useAddTaskMutation = () => {
 
       queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks.all, (old = []) => [...old, optimisticTask]);
 
+      // Show instant success feedback
+      Toast.show({
+        type: "success",
+        text1: "Task Added! ✅",
+        text2: taskData.title,
+        visibilityTime: 2000,
+      });
+
       return { previousTasks, optimisticTask };
     },
     onSuccess: (newTask, variables, context) => {
@@ -257,12 +265,74 @@ export const useAddTaskMutation = () => {
         old.map((task) => (task.id === context?.optimisticTask.id ? newTask : task))
       );
     },
-    onError: (err, newTask, context) => {
+    onError: (error, variables, context) => {
       // Rollback on error
-      queryClient.setQueryData(QUERY_KEYS.tasks.all, context?.previousTasks);
+      if (context?.previousTasks) {
+        queryClient.setQueryData(QUERY_KEYS.tasks.all, context.previousTasks);
+      }
     },
   });
 };
+```
+
+### 🎨 Task Completion Animations
+
+```typescript
+// Smooth animations for task completion (from TaskItem.tsx)
+const TaskItem: React.FC<TaskItemProps> = memo(({ task, onComplete, onDelete, isUpdating, isDeleting }) => {
+  // Animation values for smooth transitions
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(task.completed ? 0.7 : 1)).current;
+
+  // Animate when completion state changes
+  useEffect(() => {
+    if (task.completed) {
+      // Completion animation: scale bounce + fade
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.05,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 300,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Fade to completed state
+      Animated.timing(opacityAnim, {
+        toValue: 0.7,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      // Uncomplete animation: fade back in
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [task.completed, scaleAnim, opacityAnim]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.containerStyle,
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }]
+        }
+      ]}
+    >
+      {/* Task content with smooth animations */}
+    </Animated.View>
+  );
+});
 ```
 
 ### 🚀 High-Performance List Rendering
@@ -276,6 +346,8 @@ export const TaskList: React.FC<TaskListProps> = ({
   onRefresh,
   onTaskComplete,
   onTaskDelete,
+  updatingTaskId,
+  deletingTaskId,
 }) => {
   const renderTaskItem = useCallback(
     ({ item }: { item: Task }) => (
@@ -283,9 +355,11 @@ export const TaskList: React.FC<TaskListProps> = ({
         task={item}
         onComplete={onTaskComplete}
         onDelete={onTaskDelete}
+        isUpdating={updatingTaskId === item.id}
+        isDeleting={deletingTaskId === item.id}
       />
     ),
-    [onTaskComplete, onTaskDelete]
+    [onTaskComplete, onTaskDelete, updatingTaskId, deletingTaskId]
   );
 
   const keyExtractor = useCallback((item: Task) => item.id, []);
@@ -304,128 +378,57 @@ export const TaskList: React.FC<TaskListProps> = ({
     />
   );
 };
-
-// GenericFlashList wrapper (from GenericFlashList.tsx)
-export function GenericFlashList<T>({ data, renderItem, ... }: GenericFlashListProps<T>) {
-  return (
-    <FlashList
-      data={data}
-      renderItem={renderItem}
-      keyExtractor={keyExtractor || defaultKeyExtractor}
-      estimatedItemSize={estimatedItemSize}
-      showsVerticalScrollIndicator={false}
-      {...flashListProps}
-    />
-  );
-}
 ```
 
 ### 📜 Auto-Scroll to New Tasks
 
-The application features intelligent auto-scroll functionality that automatically scrolls to newly added tasks, providing smooth user experience across both iOS and Android platforms.
-
 ```typescript
-// Auto-Scroll Implementation (from TaskList.tsx)
-export const TaskList: React.FC<TaskListProps> = ({
-  tasks,
-  shouldScrollToEnd = false,
-  onScrollToEndComplete,
-  ...props
-}) => {
-  const flashListRef = useRef<FlashList<Task>>(null);
+// Auto-scroll implementation (from useTasks.ts)
+export const useTasksFeature = () => {
+  const [screenState, setScreenState] = useState<TaskScreenState>({
+    shouldScrollToEnd: false,
+  });
 
+  // Auto scroll when task is added successfully
   useEffect(() => {
-    if (shouldScrollToEnd && tasks.length > 0 && flashListRef.current) {
-      const scrollTimeout = setTimeout(() => {
-        try {
-          if (Platform.OS === 'android') {
-            // Android: Use scrollToIndex for precise positioning
-            const lastIndex = tasks.length - 1;
-            flashListRef.current.scrollToIndex({
-              index: lastIndex,
-              animated: true,
-              viewPosition: 0,
-            });
-          } else {
-            // iOS: Use scrollToEnd (more reliable for FlashList)
-            flashListRef.current.scrollToEnd({
-              animated: true
-            });
-          }
-        } catch (error) {
-          console.warn('[AutoScroll] Failed:', error);
-        }
+    if (addTaskMutation.isSuccess) {
+      // Clear any existing timeout first
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
 
-        if (onScrollToEndComplete) {
-          setTimeout(onScrollToEndComplete, 400);
-        }
-      }, 100);
-
-      return () => clearTimeout(scrollTimeout);
+      // Small delay to ensure optimistic update renders before scroll
+      scrollTimeoutRef.current = setTimeout(() => {
+        setScreenState((prev) => ({
+          ...prev,
+          shouldScrollToEnd: true,
+        }));
+        console.log("[useTasks] auto-scroll triggered"); // Helpful for debugging
+        scrollTimeoutRef.current = null;
+      }, 100); // 100ms seems to be the sweet spot
     }
-  }, [shouldScrollToEnd, tasks.length, onScrollToEndComplete]);
+  }, [addTaskMutation.isSuccess]);
 
-  return (
-    <GenericFlashList
-      ref={flashListRef}
-      data={tasks}
-      estimatedItemSize={120}
-      overrideItemLayout={(layout) => {
-        layout.size = 120; // Consistent sizing for smooth scrolling
-      }}
-      {...props}
-    />
-  );
+  return {
+    screenState,
+    taskStore: { tasks, loading: isLoading, error: error?.message || null },
+    taskStats,
+    mutationStates: {
+      // Expose all mutation states for components
+      addingTask: addTaskMutation.isPending,
+      updatingTask: updateTaskMutation.isPending,
+      deletingTask: deleteTaskMutation.isPending,
+    },
+    handlers: {
+      handleRefresh,
+      handleAddTask,
+      handleToggleComplete,
+      handleDeleteTask,
+      handleScrollToEndComplete,
+    },
+  };
 };
-
-// State Management for Auto-Scroll (from useTasks.ts)
-const handleAddTask = useCallback(async (taskData) => {
-  await addTaskMutation.mutateAsync(taskData);
-
-  // Trigger auto-scroll after successful task addition
-  setTimeout(() => {
-    setScreenState(prev => ({
-      ...prev,
-      shouldScrollToEnd: true
-    }));
-  }, 100);
-}, [addTaskMutation]);
 ```
-
-#### Platform-Specific Optimizations
-
-**🤖 Android Implementation:**
-
-- Uses `scrollToIndex` with `viewPosition: 0` for precise positioning
-- Scrolls to the exact last item with smooth animation
-- Excellent performance and reliability
-
-**🍎 iOS Implementation:**
-
-- Uses `scrollToEnd` method (more reliable for FlashList on iOS)
-- Optimized timing and animation for iOS behavior
-- Handles FlashList's unique iOS characteristics
-
-#### Key Features
-
-- ✅ **Automatic Triggering**: Scrolls automatically when new tasks are added
-- ✅ **Platform Optimization**: Different strategies for iOS and Android
-- ✅ **Smooth Animation**: Animated scrolling for better UX
-- ✅ **Error Handling**: Graceful fallbacks if scrolling fails
-- ✅ **State Management**: Clean state reset after scroll completion
-- ✅ **Performance**: Minimal impact on list rendering performance
-
-#### Technical Details
-
-The auto-scroll system works through a combination of:
-
-1. **State Management**: `shouldScrollToEnd` flag triggers scroll behavior
-2. **Ref-based Control**: Direct FlashList ref manipulation for scroll commands
-3. **Optimistic Updates**: Scroll triggers after React Query optimistic updates
-4. **Consistent Sizing**: `overrideItemLayout` ensures predictable scroll positioning
-5. **Timing Coordination**: Proper delays ensure UI updates before scroll execution
-
-````
 
 ### 🎨 Design System & Theming
 
@@ -464,7 +467,7 @@ export const useThemeStore = create<ThemeState>()(
     }
   )
 );
-````
+```
 
 ---
 
@@ -500,8 +503,9 @@ module.exports = {
   testEnvironment: "node",
   setupFiles: ["<rootDir>/jest.setup.js"],
   setupFilesAfterEnv: ["<rootDir>/src/test-setup.ts"],
-  moduleNameMapper: {
+  moduleNameMapping: {
     "^src/(.*)$": "<rootDir>/src/$1",
+    "^@/(.*)$": "<rootDir>/src/$1",
   },
   collectCoverageFrom: ["src/**/*.{ts,tsx}", "!src/**/*.d.ts", "!src/**/__tests__/**", "!src/**/*.test.{ts,tsx}"],
   coverageDirectory: "coverage",
@@ -612,7 +616,7 @@ export const useAuthFeature = () => {
 ```typescript
 // Centralized API Configuration (actual from axios.ts)
 export const apiClient = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000",
+  baseURL: process.env.EXPO_PUBLIC_API_URL || "http://localhost:3001",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -643,30 +647,27 @@ apiClient.interceptors.request.use(
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes
-      retry: (failureCount, error) => {
-        if (error?.response?.status === 404) return false;
-        return failureCount < 3;
-      },
+      staleTime: Infinity, // never stale from cache
+      gcTime: CACHE_TIME,
+      retry: 1,
+      refetchOnMount: false,
+      refetchOnReconnect: false, // no auto refresh
+      refetchOnWindowFocus: false,
+      networkMode: "offlineFirst", // cache first
     },
     mutations: {
-      retry: 1,
+      retry: 0,
+      networkMode: "offlineFirst", // works offline
     },
   },
 });
 
-// Offline Support with Persistence (actual implementation)
-import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { persistQueryClient } from "@tanstack/react-query-persist-client";
-
-const asyncStoragePersister = createAsyncStoragePersister({
+// Async storage persister for offline caching
+export const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
-});
-
-persistQueryClient({
-  queryClient,
-  persister: asyncStoragePersister,
+  key: ASYNC_STORAGE_KEYS.REACT_QUERY_OFFLINE_CACHE,
+  serialize: JSON.stringify,
+  deserialize: JSON.parse,
 });
 ```
 
@@ -677,20 +678,6 @@ persistQueryClient({
 ### 🎯 **Overview**
 
 This project implements a **Facebook-style offline-first caching strategy** using React Query with AsyncStorage persistence, providing seamless user experience regardless of network connectivity.
-
-### 🏗️ **Architecture**
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   UI Components │ ←→ │ React Query     │ ←→ │ AsyncStorage    │
-│   (Optimistic)  │    │ (Cache Layer)   │    │ (Persistence)   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                ↕
-                        ┌─────────────────┐
-                        │ Task API        │
-                        │ (Server State)  │
-                        └─────────────────┘
-```
 
 ### 🔧 **Implementation Details**
 
@@ -705,7 +692,7 @@ export const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000, // 10 min garbage collection
       refetchOnMount: false, // Don't refetch on component mount
       refetchOnWindowFocus: false, // Don't refetch on focus
-      refetchOnReconnect: true, // Refetch when coming back online
+      refetchOnReconnect: false, // Manual refresh only
       networkMode: "offlineFirst", // Work offline with cached data
     },
     mutations: {
@@ -716,18 +703,51 @@ export const queryClient = new QueryClient({
 });
 ```
 
-#### **2. Data Persistence Layer**
+#### **2. Cache Validation on Manual Refresh**
 
 ```typescript
-// AsyncStorage Persister Setup
-export const asyncStoragePersister = createAsyncStoragePersister({
-  storage: AsyncStorage,
-  key: ASYNC_STORAGE_KEYS.REACT_QUERY_OFFLINE_CACHE,
-  serialize: JSON.stringify,
-  deserialize: JSON.parse,
-});
+// Cache validation only when user refreshes (from useTasks.ts)
+const handleRefresh = useCallback(async () => {
+  // Validate cache first to clean up orphaned tasks, then refresh
+  await validateCacheWithServer();
+  await refetch();
+}, [refetch]);
 
-// Persist Configuration
+// Cache validation function (from reactQueryProvider.tsx)
+export const validateCacheWithServer = async () => {
+  try {
+    const serverTasks = await taskApi.getTasks();
+    const serverTaskIds = new Set(serverTasks.map((task) => task.id));
+
+    const cachedTasks = (queryClient.getQueryData(QUERY_KEYS.tasks.all) as Task[]) || [];
+
+    // Filter out tasks that don't exist on server
+    const validTasks = cachedTasks.filter((task) => serverTaskIds.has(task.id));
+    const removedCount = cachedTasks.length - validTasks.length;
+
+    if (removedCount > 0) {
+      console.log(`🧹 removed ${removedCount} orphaned tasks from cache`);
+      queryClient.setQueryData(QUERY_KEYS.tasks.all, validTasks);
+
+      Toast.show({
+        type: "info",
+        text1: "Cache cleaned",
+        text2: `Removed ${removedCount} unsaved task${removedCount > 1 ? "s" : ""}`,
+        visibilityTime: 3000,
+      });
+    }
+
+    console.log(`✅ cache validated: ${validTasks.length} valid tasks`);
+  } catch (error) {
+    console.error("❌ cache validation failed:", error);
+  }
+};
+```
+
+#### **3. Data Persistence**
+
+```typescript
+// Persist Configuration (from reactQueryProvider.tsx)
 <PersistQueryClientProvider
   client={queryClient}
   persistOptions={{
@@ -738,196 +758,16 @@ export const asyncStoragePersister = createAsyncStoragePersister({
     },
   }}
 >
+  {children}
+</PersistQueryClientProvider>
 ```
-
-#### **3. Optimistic Updates Implementation**
-
-```typescript
-// Optimistic Mutations (from useTaskMutations.ts)
-export const useAddTaskMutation = () => {
-  return useMutation({
-    mutationFn: taskApi.createTask,
-    onMutate: async (taskData) => {
-      // 1. Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.tasks.all });
-
-      // 2. Snapshot previous state
-      const previousTasks = queryClient.getQueryData<Task[]>(QUERY_KEYS.tasks.all);
-
-      // 3. Optimistically update cache with temporary ID
-      const optimisticTask: Task = {
-        id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        title: taskData.title,
-        description: taskData.description || "",
-        completed: taskData.completed || false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks.all, (old = []) => [...old, optimisticTask]);
-
-      // 4. Show instant feedback
-      Toast.show({
-        type: "success",
-        text1: "Task Added! ✅",
-        text2: taskData.title,
-      });
-
-      return { previousTasks, optimisticTask };
-    },
-    onSuccess: (newTask, variables, context) => {
-      // Replace optimistic task with real server task
-      queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks.all, (old = []) =>
-        old.map((task) => (task.id === context?.optimisticTask.id ? newTask : task))
-      );
-    },
-    onError: (error, variables, context) => {
-      // Rollback on error
-      if (context?.previousTasks) {
-        queryClient.setQueryData(QUERY_KEYS.tasks.all, context.previousTasks);
-      }
-      Toast.show({
-        type: "error",
-        text1: "Failed to add task",
-        text2: "Please try again",
-      });
-    },
-  });
-};
-```
-
-#### **4. Cache Validation & Cleanup**
-
-```typescript
-// Cache Validation on App Startup (from reactQueryProvider.tsx)
-export const validateCacheWithServer = async () => {
-  try {
-    if (!navigator.onLine) return; // Skip if offline
-
-    // Get current server state
-    const { taskApi } = await import("../api/taskApi");
-    const serverHealthy = await taskApi.healthCheck();
-    if (!serverHealthy) return;
-
-    const serverTasks = await taskApi.getTasks();
-    const serverTaskIds = new Set(serverTasks.map((task) => task.id));
-
-    // Get cached tasks
-    const cachedTasks = (queryClient.getQueryData(["tasks"]) as Task[]) || [];
-
-    // Filter out orphaned tasks (not on server and not recent optimistic)
-    const validTasks = cachedTasks.filter(
-      (task) =>
-        serverTaskIds.has(task.id) || // Exists on server
-        task.id.startsWith("task_") // Recent optimistic task
-    );
-
-    const removedCount = cachedTasks.length - validTasks.length;
-
-    if (removedCount > 0) {
-      console.log(`🧹 Removed ${removedCount} orphaned tasks from cache`);
-      queryClient.setQueryData(["tasks"], validTasks);
-    }
-
-    console.log(`✅ Cache validated: ${validTasks.length} valid tasks`);
-  } catch (error) {
-    console.error("❌ Cache validation failed:", error);
-  }
-};
-```
-
-### 📊 **What We're Tracking**
-
-#### **Cache Metrics**
-
-- ✅ **Cache Hit Rate**: Tasks served from cache vs network
-- ✅ **Offline Operations**: Mutations performed while offline
-- ✅ **Data Freshness**: Last sync time with server
-- ✅ **Storage Usage**: Cache size and cleanup frequency
-- ✅ **Orphaned Tasks**: Tasks removed during cache validation
-
-#### **Performance Tracking**
-
-- ✅ **Optimistic Update Speed**: Instant UI feedback (<100ms)
-- ✅ **Cache Persistence**: Data survives app restarts
-- ✅ **Network Recovery**: Automatic sync when coming back online
-- ✅ **Error Recovery**: Graceful rollback on failed mutations
-
-#### **User Experience Metrics**
-
-- ✅ **Offline Functionality**: 100% feature availability offline
-- ✅ **Data Consistency**: No data loss during network transitions
-- ✅ **Visual Feedback**: Toast notifications for all operations
-- ✅ **Error Handling**: User-friendly error messages
 
 ### 🌟 **Benefits of Our Approach**
 
-#### **🚀 Performance**
-
-- **Instant UI Response**: Optimistic updates provide immediate feedback
-- **Reduced Network Calls**: Aggressive caching minimizes API requests
-- **Background Sync**: Updates happen transparently when online
-
-#### **🔒 Reliability**
-
-- **Offline-First**: App works without internet connectivity
-- **Data Persistence**: Tasks survive app kills and restarts
-- **Conflict Resolution**: Graceful handling of server mismatches
-
-#### **👤 User Experience**
-
-- **Seamless Transitions**: No loading states for cached data
-- **Network Tolerance**: Works on poor or intermittent connections
-- **Facebook-Style UX**: Industry-standard offline behavior
-
-#### **🛠️ Developer Experience**
-
-- **Predictable State**: Clear separation of optimistic vs confirmed data
-- **Easy Debugging**: Console logs track cache operations
-- **Testable Architecture**: Clean separation of concerns
-
-### 🧪 **Testing the Cache System**
-
-#### **Manual Testing Scenarios**
-
-```bash
-# 1. Offline Mode Testing
-- Add tasks while offline → Should work instantly
-- Edit/delete tasks while offline → Should work instantly
-- Go back online → Should sync changes automatically
-
-# 2. App Restart Testing
-- Add tasks → Kill app → Restart → Tasks should persist
-- Go offline → Add tasks → Kill app → Restart → Tasks should persist
-
-# 3. Network Recovery Testing
-- Go offline → Make changes → Go online → Pull to refresh → Should sync
-
-# 4. Cache Validation Testing
-- Add tasks → Kill app → Start with different server data → Should clean orphaned tasks
-```
-
-#### **Performance Testing**
-
-```typescript
-// Performance Dataset Controls (from HomeScreen)
-- Small Dataset (3 tasks): Normal usage
-- Large Dataset (150 tasks): Performance testing
-- Stress Dataset (650 tasks): Extreme load testing
-```
-
-### 📋 **Cache Storage Keys**
-
-```typescript
-// Storage Key Management (from storageKeys.ts)
-export const ASYNC_STORAGE_KEYS = {
-  REACT_QUERY_OFFLINE_CACHE: "react-query-offline-cache",
-  AUTH_STORAGE: "auth-storage",
-  THEME_STORAGE: "theme-storage",
-} as const;
-```
-
-This caching strategy ensures the app provides a **native app-like experience** with instant responses, offline functionality, and seamless data synchronization - exactly what users expect from modern mobile applications.
+- **🚀 Performance**: Instant UI response with optimistic updates
+- **🔒 Reliability**: App works without internet connectivity
+- **👤 User Experience**: No loading states for cached data
+- **🛠️ Developer Experience**: Clean separation of concerns
 
 ---
 
@@ -950,8 +790,8 @@ yarn install
 npx expo start --dev-client
 
 # Platform-specific
-npx expo start --ios
-npx expo start --android
+npx expo run:ios
+npx expo run:android
 ```
 
 ### Code Quality Workflow
@@ -962,7 +802,7 @@ yarn lint              # Check for issues
 yarn lint:fix          # Auto-fix issues
 
 # Type Checking
-yarn typescript:fix    # Check TypeScript
+npx tsc --noEmit       # Check TypeScript
 
 # Formatting
 yarn format           # Format code
@@ -995,7 +835,7 @@ yarn prebuild         # Expo prebuild --clean
 
 ## 🎨 UI/UX Design System
 
-### Actual Component Structure
+### Component Structure
 
 ```typescript
 // Button Component (actual implementation)
@@ -1006,13 +846,11 @@ export const Button: React.FC<ButtonProps> = ({
   size = 'medium',
   disabled = false,
   loading = false,
-  icon,
-  iconOnly,
   testID,
   ...props
 }) => {
   const { theme } = useThemeStore();
-  const styles = useButtonStyles(theme, variant, size, disabled, iconOnly);
+  const styles = useButtonStyles(theme, variant, size, disabled);
 
   return (
     <TouchableOpacity
@@ -1023,7 +861,7 @@ export const Button: React.FC<ButtonProps> = ({
       accessibilityRole="button"
       {...props}
     >
-      {renderContent()}
+      {loading ? <LoadingSpinner /> : <Text style={styles.text}>{title}</Text>}
     </TouchableOpacity>
   );
 };
@@ -1035,17 +873,19 @@ export const Button: React.FC<ButtonProps> = ({
 // TaskItem with accessibility (actual implementation)
 <Switch
   value={task.completed}
-  onValueChange={() => onComplete(task.id)}
-  trackColor={{ false: theme.colors.border, true: theme.colors.success }}
-  thumbColor={task.completed ? "#ffffff" : "#f4f3f4"}
+  onValueChange={handleToggleComplete}
+  disabled={isUpdating}
   testID={`task-switch-${task.id}`}
+  accessibilityLabel={`Mark task ${task.completed ? "incomplete" : "complete"}`}
 />
 
 <Button
   title="Delete"
-  onPress={() => onDelete(task.id)}
+  onPress={handleDelete}
   variant="outline"
   size="small"
+  disabled={isDeleting}
+  loading={isDeleting}
   testID={`delete-task-${task.id}`}
 />
 ```
@@ -1067,9 +907,10 @@ export const Button: React.FC<ButtonProps> = ({
 
 - **FlashList**: High-performance list rendering for 500+ tasks
 - **Optimistic Updates**: Instant UI feedback with rollback on error
-- **React Query**: Intelligent caching and background refetching
+- **React Query**: Intelligent caching and manual refresh only
 - **Memoization**: React.memo on TaskItem and useCallback optimizations
-- **Performance Testing**: Debug panel with dataset controls (3, 150, 650 tasks)
+- **Smooth Animations**: 60fps task completion animations using native driver
+- **Auto-scroll**: Intelligent scrolling to newly added tasks
 
 ---
 
@@ -1086,18 +927,32 @@ Password: password123
 
 ✅ **Basic Authentication**: Email/password login
 ✅ **Biometric Login**: Fingerprint/Face ID (if device supports)
-✅ **Task Management**: Add, complete, delete tasks
+✅ **Task Management**: Add, complete, delete tasks with animations
 ✅ **Modal Forms**: Smooth task creation with react-hook-form
-✅ **Optimistic Updates**: Instant UI feedback
+✅ **Optimistic Updates**: Instant UI feedback with proper rollback
 ✅ **Dark/Light Theme**: Toggle in header
 ✅ **Performance Testing**: Debug panel with dataset controls
-✅ **Pull to Refresh**: Refresh task list
-✅ **Offline Support**: React Query persistence
-✅ **Toast Notifications**: User feedback
+✅ **Pull to Refresh**: Manual refresh with cache validation
+✅ **Offline Support**: React Query persistence with AsyncStorage
+✅ **Toast Notifications**: User feedback for all operations
 ✅ **Responsive Design**: Works on all screen sizes
+✅ **Loading States**: Individual task loading indicators
+✅ **Auto-scroll**: Automatic scroll to newly added tasks
+
+---
+
+## 🤖 AI Development Assistance
+
+This project was enhanced with AI assistance in the following areas:
+
+- **Revamp my component**: Refactored complex components into smaller, focused modules
+- **Add comments to my components**: Added comprehensive inline documentation and development insights
+- **Add logs as debugging to my component**: Implemented strategic console logging for tracking mutations and state changes
+- **Generate unit testing and cases for unit testing**: Created comprehensive test suites with diverse scenarios and edge cases
+- **Generate readme files**: Structured and documented this comprehensive project documentation
 
 ---
 
 **🎯 Built with precision using React Native + Expo + TypeScript + React Query + Zustand**
 
-_This project demonstrates production-ready mobile development practices with comprehensive testing, performance optimization, and enterprise-grade architecture._
+_This project demonstrates production-ready mobile development practices with comprehensive testing, performance optimization, enterprise-grade architecture, and AI-enhanced development workflow._

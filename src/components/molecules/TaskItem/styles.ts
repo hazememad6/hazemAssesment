@@ -1,8 +1,8 @@
+import { Dimensions } from "@utils";
 import { StyleSheet } from "react-native";
+import { Task } from "src/types/task";
 import { useMetrics } from "@hooks/useMetrics";
 import { useThemeStore } from "@store/themeStore";
-import { Dimensions } from "@utils";
-import { Task } from "src/types/task";
 
 export const useTaskItemStyles = (task: Task) => {
   const { moderateScale, horizontalScale, verticalScale } = useMetrics();
@@ -23,6 +23,8 @@ export const useTaskItemStyles = (task: Task) => {
     shadowOpacity: 0.1,
     shadowRadius: moderateScale(3.84),
     elevation: 5,
+    // Add subtle transform origin for better scaling animation
+    transformOrigin: "center",
   };
 
   const rowStyle = {
@@ -45,7 +47,7 @@ export const useTaskItemStyles = (task: Task) => {
     fontWeight: "600" as const,
     color: theme.colors.text,
     textDecorationLine: task.completed ? ("line-through" as const) : ("none" as const),
-    opacity: task.completed ? 0.7 : 1,
+    // Removed opacity from here since we handle it with Animated.View
   };
 
   const descriptionStyle = {

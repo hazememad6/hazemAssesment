@@ -1,9 +1,11 @@
-import React from "react";
 import { ActivityIndicator, Text, View } from "react-native";
-import { useThemeStore } from "@store/themeStore";
-import { useLoadingSpinnerStyles } from "./styles";
-import { LoadingSpinnerProps } from "./types";
 
+import { LoadingSpinnerProps } from "./types";
+import React from "react";
+import { useLoadingSpinnerStyles } from "./styles";
+import { useThemeStore } from "@store/themeStore";
+
+// simple spinner component - nothing fancy
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ size = "large", text, color }) => {
   const { containerStyle, textStyle } = useLoadingSpinnerStyles();
   const { theme } = useThemeStore();

@@ -1,12 +1,15 @@
-import React from "react";
 import { ActivityIndicator, Text, TouchableOpacity } from "react-native";
+
+import { ButtonProps } from "./types";
+import { Dimensions } from "@utils";
 import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { useButtonStyles } from "./styles";
 import { useMetrics } from "@hooks/useMetrics";
 import { useThemeStore } from "@store/themeStore";
-import { Dimensions } from "@utils";
-import { useButtonStyles } from "./styles";
-import { ButtonProps } from "./types";
 
+// button component - probably could clean this up but whatever
+// started simple then kept adding stuff as needed
 export const Button: React.FC<ButtonProps> = ({
   title,
   onPress,
@@ -27,7 +30,10 @@ export const Button: React.FC<ButtonProps> = ({
   const { theme } = useThemeStore();
   const { moderateScale } = useMetrics();
 
+  // if (__DEV__) console.log('button render', title);
+
   const getIconSize = () => {
+    // could make this a util function but eh
     switch (size) {
       case "small":
         return moderateScale(Dimensions.smallIcon);
@@ -55,7 +61,7 @@ export const Button: React.FC<ButtonProps> = ({
     }
 
     if (iconOnly && icon) {
-      return <Ionicons name={icon as any} size={getIconSize()} color={getIconColor()} testID={`icon-${icon}`} />;
+      return <Ionicons name={icon as any} size={getIconSize()} color={getIconColor()} />;
     }
 
     if (icon && title) {
@@ -66,22 +72,28 @@ export const Button: React.FC<ButtonProps> = ({
             size={getIconSize()}
             color={getIconColor()}
             style={{ marginRight: moderateScale(Dimensions.primarySpace) }}
-            testID={`icon-${icon}`}
           />
           <Text style={textStyle}>{title}</Text>
         </>
       );
     }
 
-    return <Text style={textStyle}>{title}</Text>;
+    return title ? <Text style={textStyle}>{title}</Text> : null;
+  };
+
+  const handlePress = () => {
+    // maybe add haptic feedback here someday
+    if (onPress && !disabled && !loading) {
+      onPress();
+    }
   };
 
   return (
     <TouchableOpacity
       style={buttonStyle}
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled || loading}
-      activeOpacity={0.7}
+      activeOpacity={disabled || loading ? 1 : 0.7}
       accessibilityRole="button"
       {...rest}
     >

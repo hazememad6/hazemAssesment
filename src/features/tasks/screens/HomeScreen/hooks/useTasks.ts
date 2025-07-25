@@ -1,37 +1,32 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "expo-router";
-import { Alert } from "react-native";
-import Toast from "react-native-toast-message";
-import { useAuthStore, useThemeStore } from "@store";
 import { useAddTaskMutation, useDeleteTaskMutation, useUpdateTaskMutation } from "../../../hooks/useTaskMutations";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTaskStatsQuery, useTasksQuery } from "../../../hooks/useTaskQueries";
 
+import { Alert } from "react-native";
+import { validateCacheWithServer } from "@providers/reactQueryProvider";
+
 interface TaskScreenState {
-  addingTask: boolean;
-  shouldScrollToEnd: boolean; // New state for auto-scroll
+  shouldScrollToEnd: boolean; // just for auto scroll feature
 }
 
+// main task feature hook - simplified after refactoring
+// used to be a huge mess with manual loading states everywhere
+// now just uses react query mutation states directly - much cleaner
 export const useTasksFeature = () => {
   const [screenState, setScreenState] = useState<TaskScreenState>({
-    addingTask: false,
     shouldScrollToEnd: false,
   });
 
-  // Ref to track timeout for cleanup
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { logout } = useAuthStore();
-  const { theme, toggleTheme, mode } = useThemeStore();
-  const router = useRouter();
-
-  // Simple React Query hooks
+  // react query hooks for data and mutations
   const { data: tasks = [], isLoading, error, refetch } = useTasksQuery();
   const addTaskMutation = useAddTaskMutation();
   const updateTaskMutation = useUpdateTaskMutation();
   const deleteTaskMutation = useDeleteTaskMutation();
   const taskStats = useTaskStatsQuery(tasks);
 
-  // Cleanup timeout on unmount
+  // cleanup timeout on unmount (learned this prevents memory leaks)
   useEffect(() => {
     return () => {
       if (scrollTimeoutRef.current) {
@@ -41,118 +36,93 @@ export const useTasksFeature = () => {
     };
   }, []);
 
-  // Simple refresh handler
+  // auto scroll when task is added successfully
+  // this took way too much debugging to get right
+  useEffect(() => {
+    if (addTaskMutation.isSuccess) {
+      // clear any existing timeout first
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      // small delay to ensure optimistic update renders before scroll
+      scrollTimeoutRef.current = setTimeout(() => {
+        setScreenState((prev) => ({
+          ...prev,
+          shouldScrollToEnd: true,
+        }));
+        console.log("[useTasks] auto-scroll triggered"); // helpful for debugging
+        scrollTimeoutRef.current = null;
+      }, 100); // 100ms seems to be the sweet spot
+    }
+  }, [addTaskMutation.isSuccess]);
+
   const handleRefresh = useCallback(async () => {
+    // validate cache first to clean up orphaned tasks, then refresh
+    await validateCacheWithServer();
     await refetch();
   }, [refetch]);
 
-  // Reset auto-scroll state
   const handleScrollToEndComplete = useCallback(() => {
     setScreenState((prev) => ({ ...prev, shouldScrollToEnd: false }));
   }, []);
 
-  // Enhanced add task handler with auto-scroll
+  // add task - mutation handles all the state magic
   const handleAddTask = useCallback(
-    async (taskData: { title: string; description?: string; completed?: boolean }) => {
-      if (screenState.addingTask) return;
+    (taskData: { title: string; description?: string; completed?: boolean }) => {
+      if (addTaskMutation.isPending) return; // prevent double submissions
 
-      setScreenState((prev) => ({ ...prev, addingTask: true }));
-
-      try {
-        // Mutation handles instant feedback and optimistic updates
-        await addTaskMutation.mutateAsync(taskData);
-
-        // Clear any existing timeout
-        if (scrollTimeoutRef.current) {
-          clearTimeout(scrollTimeoutRef.current);
-        }
-
-        // Small delay to ensure optimistic update is rendered before scroll
-        scrollTimeoutRef.current = setTimeout(() => {
-          setScreenState((prev) => ({
-            ...prev,
-            addingTask: false,
-            shouldScrollToEnd: true,
-          }));
-          console.log("[useTasks] Auto-scroll triggered after task addition");
-          scrollTimeoutRef.current = null;
-        }, 100);
-      } catch (error) {
-        // Error handling is done in mutation
-        console.error("Add task error:", error);
-        setScreenState((prev) => ({ ...prev, addingTask: false }));
-      }
+      addTaskMutation.mutate(taskData); // switched from mutateAsync to prevent hanging
     },
-    [addTaskMutation, screenState.addingTask]
+    [addTaskMutation]
   );
 
-  // Instant toggle complete handler
+  // toggle completion - this was causing the hanging issue before
+  // switched to mutate() instead of mutateAsync() and it's much more stable
   const handleToggleComplete = useCallback(
-    async (id: string) => {
+    (id: string) => {
       const task = tasks.find((t) => t.id === id);
-      if (!task) return;
-
-      try {
-        // Mutation handles instant feedback and optimistic updates
-        await updateTaskMutation.mutateAsync({
-          id,
-          updates: { completed: !task.completed },
-        });
-      } catch (error) {
-        // Error handling is done in mutation
-        console.error("Update task error:", error);
+      if (!task) {
+        console.warn("[useTasks] Task not found for toggle:", id);
+        return;
       }
+
+      if (updateTaskMutation.isPending) {
+        console.log("[useTasks] Update already pending, skipping toggle");
+        return; // prevent multiple toggles
+      }
+
+      const newCompletedState = !task.completed;
+      console.log(`[useTasks] Toggling task ${id} from ${task.completed} to ${newCompletedState}`);
+
+      // using mutate instead of mutateAsync to prevent promise hanging
+      // this was the key fix for the toggle issue
+      updateTaskMutation.mutate({
+        id,
+        updates: { completed: newCompletedState },
+      });
     },
     [updateTaskMutation, tasks]
   );
 
-  // Instant delete handler
+  // delete with confirmation dialog
   const handleDeleteTask = useCallback(
-    async (id: string) => {
+    (id: string) => {
+      if (deleteTaskMutation.isPending) return; // prevent multiple deletes
+
       Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
-          onPress: async () => {
-            try {
-              // Mutation handles instant feedback and optimistic updates
-              await deleteTaskMutation.mutateAsync(id);
-            } catch (error) {
-              // Error handling is done in mutation
-              console.error("Delete task error:", error);
-            }
+          onPress: () => {
+            deleteTaskMutation.mutate(id); // also using mutate here for consistency
           },
         },
       ]);
     },
     [deleteTaskMutation]
   );
-
-  // Simple logout handler
-  const handleLogout = useCallback(() => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: () => {
-          // Show feedback
-          Toast.show({
-            type: "info",
-            text1: "Signing Out...",
-            visibilityTime: 1500,
-          });
-
-          // Simple logout
-          logout();
-
-          // Navigate immediately
-          router.replace("/(auth)/login");
-        },
-      },
-    ]);
-  }, [logout, router]);
 
   return {
     screenState,
@@ -161,15 +131,28 @@ export const useTasksFeature = () => {
       loading: isLoading,
       error: error?.message || null,
     },
-    theme: { theme, toggleTheme, mode },
     taskStats,
+    mutationStates: {
+      // expose all mutation states for components
+      // this is much cleaner than managing loading states manually
+      addingTask: addTaskMutation.isPending,
+      addTaskSuccess: addTaskMutation.isSuccess,
+      addTaskError: addTaskMutation.error,
+
+      updatingTask: updateTaskMutation.isPending,
+      updateTaskSuccess: updateTaskMutation.isSuccess,
+      updateTaskError: updateTaskMutation.error,
+
+      deletingTask: deleteTaskMutation.isPending,
+      deleteTaskSuccess: deleteTaskMutation.isSuccess,
+      deleteTaskError: deleteTaskMutation.error,
+    },
     handlers: {
       handleRefresh,
       handleAddTask,
       handleToggleComplete,
       handleDeleteTask,
-      handleLogout,
-      handleScrollToEndComplete, // New handler for scroll completion
+      handleScrollToEndComplete,
     },
   };
 };

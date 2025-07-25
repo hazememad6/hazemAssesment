@@ -1,24 +1,26 @@
 import { useMemo } from "react";
 import { useWindowDimensions } from "react-native";
 
+// responsive design helper - stolen from some tutorial but works great
 export const useMetrics = () => {
   const { width, height } = useWindowDimensions();
-  //design width and height
+
+  // design dimensions - probably should be constants somewhere
   const { dw, dh } = { dw: 360, dh: 780 };
 
   const designWidth = useMemo(() => (width > height ? dh : dw), [width, height, dh, dw]);
   const designHeight = useMemo(() => (width > height ? dw : dh), [width, height, dh, dw]);
 
-  // width, marginHorizontal(right,left), marginHorizontal(right,left), paddingHorizontal(right,left),
+  // horizontal scaling for widths and stuff
   const horizontalScale = (size: number) => (width / designWidth) * size;
 
-  // height, marginVertical(top,bottom), marginVertical(top,bottom), paddingVertical(top,bottom),
+  // vertical scaling for heights
   const verticalScale = (size: number) => (height / designHeight) * size;
 
-  //fontsize, borderRadius
+  // moderate scaling for fonts - prevents crazy big text on tablets
   const moderateScale = (size: number, factor = 0.5) => size + (horizontalScale(size) - size) * factor;
 
-  // padding, margin
+  // helper for padding/margin - saves some typing
   const horizontalVertical = (key: "margin" | "padding", value: number, values?: { x: number; y: number }) => {
     const horizontalValue = horizontalScale(values ? values.x : value);
     const verticalValue = verticalScale(values ? values.y : value);
@@ -27,6 +29,8 @@ export const useMetrics = () => {
       [`${key}Vertical`]: verticalValue,
     };
   };
+
+  // circle helper - used for avatars and buttons
   const circleView = (value: number) => ({
     height: moderateScale(value),
     width: moderateScale(value),

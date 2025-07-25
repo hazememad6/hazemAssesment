@@ -1,11 +1,13 @@
 import React, { forwardRef, useCallback, useMemo } from "react";
 import { RefreshControl, Text, View } from "react-native";
+
 import { FlashList } from "@shopify/flash-list";
-import { useThemeStore } from "@store/themeStore";
+import { GenericFlashListProps } from "./types";
 import { LoadingSpinner } from "../LoadingSpinner";
 import { useGenericFlashListStyles } from "./styles";
-import { GenericFlashListProps } from "./types";
+import { useThemeStore } from "@store/themeStore";
 
+// generic flashlist wrapper - reused everywhere
 export const GenericFlashList = forwardRef<FlashList<any>, GenericFlashListProps<any>>(function GenericFlashList<T>(
   {
     data,
@@ -26,7 +28,7 @@ export const GenericFlashList = forwardRef<FlashList<any>, GenericFlashListProps
   const { theme } = useThemeStore();
   const styles = useGenericFlashListStyles();
 
-  // Default key extractor
+  // fallback key extractor
   const defaultKeyExtractor = useCallback((item: T, index: number) => {
     if (item && typeof item === "object" && "id" in item) {
       return String((item as any).id);
@@ -34,7 +36,7 @@ export const GenericFlashList = forwardRef<FlashList<any>, GenericFlashListProps
     return String(index);
   }, []);
 
-  // Empty component
+  // empty state component
   const renderEmptyComponent = useMemo(() => {
     if (emptyComponent) {
       return emptyComponent;
@@ -47,7 +49,7 @@ export const GenericFlashList = forwardRef<FlashList<any>, GenericFlashListProps
     );
   }, [emptyComponent, emptyText, styles.emptyContainer, styles.emptyText]);
 
-  // Loading state
+  // show loading for first load
   if (loading && data.length === 0) {
     return <LoadingSpinner text="Loading..." />;
   }

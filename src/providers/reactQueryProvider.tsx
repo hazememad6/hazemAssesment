@@ -1,34 +1,38 @@
-import React, { ReactNode, useEffect } from "react";
+import React, { ReactNode } from "react";
 
 import { ASYNC_STORAGE_KEYS } from "../storage/storageKeys";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { QUERY_KEYS } from "@query/queryKeys";
 import { QueryClient } from "@tanstack/react-query";
+import { Task } from "src/types/task";
+import Toast from "react-native-toast-message";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import { taskApi } from "@api/taskApi";
 
-const STALE_TIME = 5 * 60 * 1000; // 5 min
+// cache timing constants - probably could tweak these
 const CACHE_TIME = 10 * 60 * 1000; // 10 min
 const PERSIST_OFFLINE_CACHE_TIME = 24 * 60 * 60 * 1000; // 24 hours
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: STALE_TIME,
+      staleTime: Infinity, // never stale from cache
       gcTime: CACHE_TIME,
       retry: 1,
       refetchOnMount: false,
-      refetchOnReconnect: false, // Don't auto-refetch on reconnect
+      refetchOnReconnect: false, // no auto refresh
       refetchOnWindowFocus: false,
-      networkMode: "offlineFirst", // Cache-first approach
+      networkMode: "offlineFirst", // cache first
     },
     mutations: {
       retry: 0,
-      networkMode: "offlineFirst", // Mutations work offline
+      networkMode: "offlineFirst", // works offline
     },
   },
 });
 
-// Create AsyncStorage persister for offline caching
+// async storage persister for offline caching
 export const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
   key: ASYNC_STORAGE_KEYS.REACT_QUERY_OFFLINE_CACHE,
@@ -36,48 +40,45 @@ export const asyncStoragePersister = createAsyncStoragePersister({
   deserialize: JSON.parse,
 });
 
-// Validate cache against current TaskApi state
+// validate cache against current taskapi state - prevents orphaned tasks
 export const validateCacheWithServer = async () => {
   try {
-    // Import taskApi dynamically to avoid circular dependency
-    const { taskApi } = await import("../api/taskApi");
-
-    // Get current server state
     const serverTasks = await taskApi.getTasks();
     const serverTaskIds = new Set(serverTasks.map((task) => task.id));
 
-    // Get cached tasks
-    const cachedTasks = (queryClient.getQueryData(["tasks"]) as any[]) || [];
+    const cachedTasks = (queryClient.getQueryData(QUERY_KEYS.tasks.all) as Task[]) || [];
 
-    // Filter out tasks that don't exist on server
+    // filter out tasks that don't exist on server
     const validTasks = cachedTasks.filter((task) => serverTaskIds.has(task.id));
     const removedCount = cachedTasks.length - validTasks.length;
 
     if (removedCount > 0) {
-      console.log(`🧹 Removed ${removedCount} orphaned tasks from cache`);
-      queryClient.setQueryData(["tasks"], validTasks);
+      console.log(`🧹 removed ${removedCount} orphaned tasks from cache`);
+      queryClient.setQueryData(QUERY_KEYS.tasks.all, validTasks);
+
+      // let user know what happened
+      Toast.show({
+        type: "info",
+        text1: "Cache cleaned",
+        text2: `Removed ${removedCount} unsaved task${removedCount > 1 ? "s" : ""}`,
+        visibilityTime: 3000,
+      });
     }
 
-    console.log(`✅ Cache validated: ${validTasks.length} valid tasks`);
+    console.log(`✅ cache validated: ${validTasks.length} valid tasks`);
   } catch (error) {
-    console.error("❌ Cache validation failed:", error);
+    console.error("❌ cache validation failed:", error);
   }
 };
 
 export default function ReactQueryProvider({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    // Validate cache after hydration with a delay to ensure taskApi is ready
-    const timer = setTimeout(validateCacheWithServer, 2000);
-    return () => clearTimeout(timer);
-  }, []);
-
+  // No automatic cache validation on startup - only when user refreshes
   return (
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{
         persister: asyncStoragePersister,
         maxAge: PERSIST_OFFLINE_CACHE_TIME,
-        // Persist all successful queries
         dehydrateOptions: {
           shouldDehydrateQuery: (query) => query.state.status === "success",
         },
@@ -88,13 +89,13 @@ export default function ReactQueryProvider({ children }: { children: ReactNode }
   );
 }
 
-// Simple cache utilities
+// cache utilities - keep it simple
 export const clearCache = async () => {
   try {
     await queryClient.clear();
     await asyncStoragePersister.removeClient();
-    console.log("Cache cleared");
+    console.log("cache cleared");
   } catch (error) {
-    console.error("Failed to clear cache:", error);
+    console.error("failed to clear cache:", error);
   }
 };

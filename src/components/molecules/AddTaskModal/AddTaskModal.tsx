@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import { AddTaskFormData, AddTaskModalProps } from "./types";
 import { Alert, Modal, Text, TextInput, View } from "react-native";
+import React, { useState } from "react";
+
 import { Button } from "@components/atoms";
 import { useAddTaskModalStyles } from "./styles";
-import { AddTaskFormData, AddTaskModalProps } from "./types";
 
+// modal for adding tasks - probably overkill but looks nice
 export const AddTaskModal: React.FC<AddTaskModalProps> = ({ visible, onClose, onAddTask, loading = false }) => {
   const [formData, setFormData] = useState<AddTaskFormData>({
     title: "",
@@ -24,7 +26,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ visible, onClose, on
       completed: false,
     });
 
-    // Reset form
+    // clean up and close
     setFormData({ title: "", description: "" });
     onClose();
   };

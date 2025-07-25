@@ -15,7 +15,7 @@ interface AuthState {
   logout: () => void;
 }
 
-// Store timeout reference for cleanup
+// timeout ref for logout cleanup - kinda hacky but works
 let logoutTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 export const useAuthStore = create<AuthState>()(
@@ -25,31 +25,25 @@ export const useAuthStore = create<AuthState>()(
       loading: true,
       login: (c) => set({ creds: c }),
       logout: () => {
-        // Clear credentials immediately
         set({ creds: null });
 
-        // Clear any existing timeout
+        // clear any existing timeout
         cleanupAuthStore();
 
-        // Simple cache clearing using constants
+        // clear cache after logout - prevents data leaks
         logoutTimeoutId = setTimeout(async () => {
           try {
-            // Skip cache clearing in test environment
-            if (process.env.NODE_ENV === "test") {
-              return;
-            }
+            if (process.env.NODE_ENV === "test") return; // skip in tests
 
-            // Clear React Query cache
             const { queryClient } = await import("../providers/reactQueryProvider");
             queryClient.clear();
 
-            // Clear AsyncStorage React Query cache using constant
             const AsyncStorage = await import("@react-native-async-storage/async-storage");
             await AsyncStorage.default.removeItem(ASYNC_STORAGE_KEYS.REACT_QUERY_OFFLINE_CACHE);
 
-            console.log("✅ Cache cleared on logout");
+            console.log("✅ cache cleared on logout");
           } catch (error) {
-            console.log("⚠️ Cache clear failed:", error);
+            console.log("⚠️ cache clear failed:", error);
           } finally {
             logoutTimeoutId = null;
           }
@@ -70,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-// Cleanup function for when the store is destroyed
+// cleanup helper - called from logout
 export const cleanupAuthStore = () => {
   if (logoutTimeoutId) {
     clearTimeout(logoutTimeoutId);

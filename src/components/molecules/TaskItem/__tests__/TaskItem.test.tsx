@@ -1,5 +1,6 @@
-import React from "react";
 import { fireEvent, render } from "@testing-library/react-native";
+
+import React from "react";
 import { Task } from "src/types/task";
 import { TaskItem } from "../TaskItem";
 
@@ -137,11 +138,14 @@ describe("TaskItem Component", () => {
       const { getByTestId } = render(<TaskItem {...defaultProps} />);
       const switchComponent = getByTestId("task-switch-1");
 
-      fireEvent(switchComponent, "valueChange", true);
-      fireEvent(switchComponent, "valueChange", false);
-      fireEvent(switchComponent, "valueChange", true);
+      // Simulate rapid toggle presses with static task object
+      fireEvent(switchComponent, "valueChange", true); // false -> true (should call)
+      fireEvent(switchComponent, "valueChange", false); // false -> false (no change, shouldn't call)
+      fireEvent(switchComponent, "valueChange", true); // false -> true (should call)
 
-      expect(defaultProps.onComplete).toHaveBeenCalledTimes(3);
+      // Only calls that actually change the value should trigger onComplete
+      // Since task.completed stays false in test, only true values trigger calls
+      expect(defaultProps.onComplete).toHaveBeenCalledTimes(2);
     });
 
     it("handles multiple rapid delete presses", () => {

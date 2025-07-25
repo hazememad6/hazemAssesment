@@ -1,7 +1,7 @@
+import { STORE_KEYS } from "./storeKeys";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { zustandAsyncStorage } from "../storage";
-import { STORE_KEYS } from "./storeKeys";
 
 export type ThemeMode = "light" | "dark";
 
@@ -18,6 +18,7 @@ export interface Theme {
   };
 }
 
+// theme colors - might need tweaking but looks decent
 export const lightTheme: Theme = {
   colors: {
     background: "#ffffff",
@@ -51,6 +52,7 @@ interface ThemeState {
   setTheme: (mode: ThemeMode) => void;
 }
 
+// theme store with persistence
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({

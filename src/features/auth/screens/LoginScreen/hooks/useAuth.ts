@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
 import * as LocalAuthentication from "expo-local-authentication";
-import { useRouter } from "expo-router";
-import { useForm } from "react-hook-form";
+
+import { useCallback, useEffect, useState } from "react";
+
 import { Alert } from "react-native";
 import Toast from "react-native-toast-message";
 import { useAuthStore } from "@store/authStore";
-// regex validation now handled in LoginScreen component
+import { useForm } from "react-hook-form";
+import { useRouter } from "expo-router";
 
 export interface LoginFormData {
   email: string;
@@ -17,6 +18,7 @@ interface AuthState {
   biometricAvailable: boolean;
 }
 
+// demo creds - could move to env but this is fine for now
 const DEMO_CREDENTIALS = {
   email: "demo@example.com",
   password: "password123",
@@ -44,17 +46,17 @@ export const useAuthFeature = () => {
   });
 
   const updateAuthState = useCallback((updates: Partial<AuthState>) => {
-    setAuthState((prev: AuthState) => ({ ...prev, ...updates }));
+    setAuthState((prev) => ({ ...prev, ...updates }));
   }, []);
 
   const checkBiometricSupport = useCallback(async () => {
     try {
-      console.log("🔐 Checking biometric support...");
+      console.log("🔐 checking biometric support");
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
 
-      console.log("🔐 Biometric check results:", {
+      console.log("🔐 biometric results:", {
         hasHardware,
         isEnrolled,
         supportedTypes: supportedTypes.map((type) => LocalAuthentication.AuthenticationType[type]),
@@ -72,7 +74,7 @@ export const useAuthFeature = () => {
         });
       }
     } catch (error) {
-      console.log("🔐 Biometric check error:", error);
+      console.log("🔐 biometric check failed:", error);
     }
   }, [updateAuthState]);
 
@@ -81,6 +83,7 @@ export const useAuthFeature = () => {
       updateAuthState({ loading: true });
 
       try {
+        // fake delay to simulate real login
         await new Promise((resolve) => setTimeout(resolve, 1500));
 
         if (data.email === DEMO_CREDENTIALS.email && data.password === DEMO_CREDENTIALS.password) {
@@ -112,7 +115,7 @@ export const useAuthFeature = () => {
 
   const handleBiometricLogin = useCallback(async () => {
     try {
-      console.log("🔐 Starting biometric authentication...");
+      console.log("🔐 starting biometric auth");
 
       Toast.show({
         type: "info",
@@ -128,7 +131,7 @@ export const useAuthFeature = () => {
         disableDeviceFallback: true,
       });
 
-      console.log("🔐 Biometric result:", result);
+      console.log("🔐 biometric result:", result);
 
       if (result.success) {
         const mockToken = "biometric-jwt-token-" + Date.now();
@@ -158,7 +161,7 @@ export const useAuthFeature = () => {
         }
       }
     } catch (error) {
-      console.error("🔐 Biometric authentication error:", error);
+      console.error("🔐 biometric auth error:", error);
       Toast.show({
         type: "error",
         text1: "Biometric Error",
@@ -171,6 +174,7 @@ export const useAuthFeature = () => {
     checkBiometricSupport();
   }, [checkBiometricSupport]);
 
+  // auto redirect if already logged in
   useEffect(() => {
     if (creds?.jwtToken) {
       router.replace("/(logged-in)/home");

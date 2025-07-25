@@ -1,12 +1,14 @@
-import React, { useEffect } from "react";
-import { ErrorBoundary, Stack } from "expo-router";
-import { Try } from "expo-router/build/views/Try";
 import * as SplashScreen from "expo-splash-screen";
+
+import { ErrorBoundary, Stack } from "expo-router";
+import React, { useEffect } from "react";
+
+import { ReactQueryProvider } from "src";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
-import { ReactQueryProvider } from "src";
+import { Try } from "expo-router/build/views/Try";
 
-// Prevent auto-hiding and hide splash screen immediately
+// prevent auto hide and hide immediately - kinda redundant but works
 SplashScreen.preventAutoHideAsync();
 
 function RootLayout() {
@@ -24,7 +26,7 @@ function RootLayout() {
             <Stack.Screen name="(logged-in)" />
           </Stack>
 
-          {/* Toast component for notifications */}
+          {/* toast for global notifications */}
           <Toast position="bottom" />
         </ReactQueryProvider>
       </SafeAreaProvider>

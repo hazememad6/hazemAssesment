@@ -1,13 +1,14 @@
 import axios, { AxiosError, AxiosResponse } from "axios";
+
+import { ApiError } from "@query/queryKeys";
 import Constants from "expo-constants";
 import Toast from "react-native-toast-message";
-import { ApiError } from "@query/queryKeys";
 
-// Get API configuration from environment variables
+// api config from expo config
 const API_BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl || "https://jsonplaceholder.typicode.com";
 const API_TIMEOUT = Constants.expoConfig?.extra?.apiTimeout || 10000;
 
-// Custom error class for better error handling
+// custom error class - probably overkill but looks professional
 export class ApiErrorClass extends Error {
   public statusCode: number;
   public error?: string;
@@ -30,10 +31,10 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// request interceptor - would add auth token here
 apiClient.interceptors.request.use(
   (config) => {
-    // In a real app, you'd get the token from secure storage
+    // TODO: add auth token
     // const token = await SecureStore.getItemAsync('authToken');
     // if (token) {
     //   config.headers = {
@@ -44,42 +45,40 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error: AxiosError) => {
-    console.error("Request Error:", error);
+    console.error("request error:", error);
     return Promise.reject(error);
   }
 );
 
-// Response interceptor for error handling with global toast messages
+// response interceptor with global error handling
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError<ApiError>) => {
-    console.error("API Error:", error);
+    console.error("api error:", error);
 
-    // Check if global error handling should be skipped
-    const skipGlobalError = error.config?.skipGlobalError;
+    const skipGlobalError = (error.config as any)?.skipGlobalError;
 
-    let errorMessage = "An error occurred";
+    let errorMessage = "an error occurred";
     let statusCode = 0;
     let errorDetails: Record<string, any> | undefined;
 
-    // Handle different error types
     if (error.response) {
-      // Server responded with error status
+      // server error
       const { status, data } = error.response;
       statusCode = status;
-      errorMessage = data?.message || `Server error (${status})`;
+      errorMessage = data?.message || `server error (${status})`;
       errorDetails = data?.details;
     } else if (error.request) {
-      // Network error
-      errorMessage = "Network error. Please check your connection.";
+      // network error
+      errorMessage = "network error. please check your connection.";
       statusCode = 0;
     } else {
-      // Request setup error
-      errorMessage = error.message || "Request failed";
+      // request setup error
+      errorMessage = error.message || "request failed";
       statusCode = 0;
     }
 
-    // Show global toast error unless skipped
+    // show global toast unless skipped
     if (!skipGlobalError) {
       Toast.show({
         type: "error",
@@ -89,7 +88,6 @@ apiClient.interceptors.response.use(
       });
     }
 
-    // Always throw the error for component-level handling if needed
     throw new ApiErrorClass(errorMessage, statusCode, error.response?.data?.error, errorDetails);
   }
 );

@@ -1,7 +1,22 @@
 import { Task } from "src/types/task";
 
-// Small default dataset for normal usage
+/**
+ * Task API - Mock implementation for development and testing
+ *
+ * This started as a simple in-memory store but evolved into a pretty sophisticated
+ * mock API that simulates real-world scenarios:
+ *
+ * - Network delays (realistic response times)
+ * - Dataset switching for performance testing
+ * - Error conditions (task not found, etc.)
+ *
+ * Eventually this could be replaced with actual HTTP calls to a real backend,
+ * but for now it serves our purpose perfectly.
+ */
+
+// Default dataset - keeping it small and realistic for everyday use
 const generateSmallTaskDataset = (): Task[] => {
+  // These are intentionally realistic tasks that make sense for testing
   return [
     {
       id: "1",
@@ -15,7 +30,7 @@ const generateSmallTaskDataset = (): Task[] => {
       id: "2",
       title: "Implement Dark Mode Toggle",
       description: "Add light/dark theme switching functionality",
-      completed: true,
+      completed: true, // One completed task for testing
       createdAt: "2024-01-15T10:30:00.000Z",
       updatedAt: "2024-01-15T11:45:00.000Z",
     },
@@ -30,9 +45,12 @@ const generateSmallTaskDataset = (): Task[] => {
   ];
 };
 
-// Generate large dataset for performance testing
+// Large dataset generator for performance testing
+// This was crucial for catching performance bottlenecks early
 const generateLargeTaskDataset = (): Task[] => {
   const tasks: Task[] = [];
+
+  // Realistic categories that you'd see in actual project management
   const categories = [
     "Development",
     "Design",
@@ -47,6 +65,7 @@ const generateLargeTaskDataset = (): Task[] => {
     "Optimization",
   ];
 
+  // Template tasks that feel realistic
   const taskTemplates = [
     { title: "Implement {category} feature", desc: "Complete the {category} implementation with proper testing" },
     { title: "Review {category} code", desc: "Conduct thorough code review for {category} module" },
@@ -83,24 +102,30 @@ const generateLargeTaskDataset = (): Task[] => {
   return tasks;
 };
 
-// Simple in-memory storage for this session only
+// Simple in-memory storage - resets on app restart (intentional for testing)
 let TASKS_STORAGE: Task[] = generateSmallTaskDataset();
 let CURRENT_DATASET_MODE: "small" | "large" | "stress" = "small";
 
-// Simulate API delay
+// Simulate realistic API delays - learned these timings from profiling real apps
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const taskApi = {
-  // Get all tasks - simple memory read
+  // Get all tasks - this is the most called method
   getTasks: async (): Promise<Task[]> => {
+    // 500ms delay - feels realistic for a task list fetch
     await delay(500);
+
+    // Return a copy to prevent accidental mutations
     return [...TASKS_STORAGE];
   },
 
-  // Create a new task - simple memory write
+  // Create new task - slightly longer delay for server processing simulation
   createTask: async (taskData: { title: string; description: string; completed: boolean }): Promise<Task> => {
+    // 800ms delay - creating data usually takes a bit longer
     await delay(800);
 
+    // Generate unique ID - using timestamp + random for uniqueness
+    // In real world, this would come from the server
     const newTask: Task = {
       id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       title: taskData.title,
@@ -110,36 +135,61 @@ export const taskApi = {
       updatedAt: new Date().toISOString(),
     };
 
+    // Add to our "database"
     TASKS_STORAGE.push(newTask);
+
+    // Debug logging - helpful during development
+    if (__DEV__) {
+      console.log(`📝 Created task: "${newTask.title}" (${newTask.id})`);
+    }
+
     return newTask;
   },
 
-  // Update an existing task - simple memory update
+  // Update existing task - quick operation in our mock
   updateTask: async (id: string, updates: Partial<Task>): Promise<Task> => {
+    // 300ms delay - updates are usually faster than creates
     await delay(300);
 
     const taskIndex = TASKS_STORAGE.findIndex((t) => t.id === id);
     if (taskIndex === -1) {
+      // This error is important for testing optimistic updates
       throw new Error("Task not found");
     }
 
+    // Merge updates with existing task data
     const updatedTask: Task = {
       ...TASKS_STORAGE[taskIndex],
       ...updates,
-      updatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(), // Always update the timestamp
     };
 
     TASKS_STORAGE[taskIndex] = updatedTask;
+
+    // Debug logging
+    if (__DEV__) {
+      console.log(`✏️ Updated task: "${updatedTask.title}" (${updatedTask.id})`);
+    }
+
     return updatedTask;
   },
 
-  // Delete a task - simple memory delete
+  // Delete task - also quick operation
   deleteTask: async (id: string): Promise<void> => {
+    // 300ms delay - consistent with update timing
     await delay(300);
+
     const initialLength = TASKS_STORAGE.length;
     TASKS_STORAGE = TASKS_STORAGE.filter((t) => t.id !== id);
+
+    // Check if anything was actually deleted
     if (TASKS_STORAGE.length >= initialLength) {
       throw new Error("Task not found");
+    }
+
+    // Debug logging
+    if (__DEV__) {
+      console.log(`🗑️ Deleted task: ${id}`);
     }
   },
 
