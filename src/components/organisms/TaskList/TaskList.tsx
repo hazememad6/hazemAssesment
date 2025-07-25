@@ -17,6 +17,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onScrollToEndComplete,
 }) => {
   const flashListRef = useRef<FlashList<Task>>(null);
+  const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Simplified auto-scroll implementation
   useEffect(() => {
@@ -48,15 +49,31 @@ export const TaskList: React.FC<TaskListProps> = ({
           console.warn("[AutoScroll] Failed:", error);
         }
 
-        // Call completion callback
+        // Call completion callback with proper cleanup
         if (onScrollToEndComplete) {
-          setTimeout(onScrollToEndComplete, 400);
+          completionTimeoutRef.current = setTimeout(onScrollToEndComplete, 400);
         }
       }, 100);
 
-      return () => clearTimeout(scrollTimeout);
+      return () => {
+        clearTimeout(scrollTimeout);
+        if (completionTimeoutRef.current) {
+          clearTimeout(completionTimeoutRef.current);
+          completionTimeoutRef.current = null;
+        }
+      };
     }
   }, [shouldScrollToEnd, tasks.length, onScrollToEndComplete]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (completionTimeoutRef.current) {
+        clearTimeout(completionTimeoutRef.current);
+        completionTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Memoize the render function to prevent unnecessary re-renders
   const renderTaskItem = useCallback(

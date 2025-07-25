@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import { Alert } from "react-native";
 import Toast from "react-native-toast-message";
@@ -17,6 +17,9 @@ export const useTasksFeature = () => {
     shouldScrollToEnd: false,
   });
 
+  // Ref to track timeout for cleanup
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const { logout } = useAuthStore();
   const { theme, toggleTheme, mode } = useThemeStore();
   const router = useRouter();
@@ -27,6 +30,16 @@ export const useTasksFeature = () => {
   const updateTaskMutation = useUpdateTaskMutation();
   const deleteTaskMutation = useDeleteTaskMutation();
   const taskStats = useTaskStatsQuery(tasks);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Simple refresh handler
   const handleRefresh = useCallback(async () => {
@@ -49,14 +62,20 @@ export const useTasksFeature = () => {
         // Mutation handles instant feedback and optimistic updates
         await addTaskMutation.mutateAsync(taskData);
 
+        // Clear any existing timeout
+        if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
+        }
+
         // Small delay to ensure optimistic update is rendered before scroll
-        setTimeout(() => {
+        scrollTimeoutRef.current = setTimeout(() => {
           setScreenState((prev) => ({
             ...prev,
             addingTask: false,
             shouldScrollToEnd: true,
           }));
           console.log("[useTasks] Auto-scroll triggered after task addition");
+          scrollTimeoutRef.current = null;
         }, 100);
       } catch (error) {
         // Error handling is done in mutation

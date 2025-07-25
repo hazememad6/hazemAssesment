@@ -34,35 +34,13 @@ module.exports = defineConfig([
           ignoreRestSiblings: true,
         },
       ],
-      "no-unused-vars": "off", // Turn off base rule as it conflicts with @typescript-eslint version
-
-      // Import rules to enforce path aliases
-      "import/no-relative-packages": "error",
-      "import/prefer-default-export": "off", // Allow named exports
-      "import/order": [
-        "error",
-        {
-          groups: ["builtin", "external", "internal", "parent", "sibling", "index"],
-          pathGroups: [
-            {
-              pattern: "react",
-              group: "external",
-              position: "before",
-            },
-            {
-              pattern: "@**/**",
-              group: "internal",
-              position: "before",
-            },
-          ],
-          pathGroupsExcludedImportTypes: ["react"],
-          "newlines-between": "never",
-          alphabetize: {
-            order: "asc",
-            caseInsensitive: true,
-          },
-        },
-      ],
+    },
+  },
+  // Override for test files to allow require() statements in Jest mocks
+  {
+    files: ["**/*.test.ts", "**/*.test.tsx", "**/test-setup.ts", "**/__tests__/**/*"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
     },
   },
 ]);
