@@ -3,16 +3,18 @@ import { useRouter } from "expo-router";
 import { Alert } from "react-native";
 import Toast from "react-native-toast-message";
 import { useAuthStore, useThemeStore } from "@store";
-import { useAddTaskMutation, useUpdateTaskMutation, useDeleteTaskMutation } from "../../../hooks/useTaskMutations";
-import { useTasksQuery, useTaskStatsQuery } from "../../../hooks/useTaskQueries";
+import { useAddTaskMutation, useDeleteTaskMutation, useUpdateTaskMutation } from "../../../hooks/useTaskMutations";
+import { useTaskStatsQuery, useTasksQuery } from "../../../hooks/useTaskQueries";
 
 interface TaskScreenState {
   addingTask: boolean;
+  shouldScrollToEnd: boolean; // New state for auto-scroll
 }
 
 export const useTasksFeature = () => {
   const [screenState, setScreenState] = useState<TaskScreenState>({
     addingTask: false,
+    shouldScrollToEnd: false,
   });
 
   const { logout } = useAuthStore();
@@ -31,7 +33,12 @@ export const useTasksFeature = () => {
     await refetch();
   }, [refetch]);
 
-  // Instant add task handler
+  // Reset auto-scroll state
+  const handleScrollToEndComplete = useCallback(() => {
+    setScreenState((prev) => ({ ...prev, shouldScrollToEnd: false }));
+  }, []);
+
+  // Enhanced add task handler with auto-scroll
   const handleAddTask = useCallback(
     async (taskData: { title: string; description?: string; completed?: boolean }) => {
       if (screenState.addingTask) return;
@@ -41,10 +48,19 @@ export const useTasksFeature = () => {
       try {
         // Mutation handles instant feedback and optimistic updates
         await addTaskMutation.mutateAsync(taskData);
+
+        // Small delay to ensure optimistic update is rendered before scroll
+        setTimeout(() => {
+          setScreenState((prev) => ({
+            ...prev,
+            addingTask: false,
+            shouldScrollToEnd: true,
+          }));
+          console.log("[useTasks] Auto-scroll triggered after task addition");
+        }, 100);
       } catch (error) {
         // Error handling is done in mutation
         console.error("Add task error:", error);
-      } finally {
         setScreenState((prev) => ({ ...prev, addingTask: false }));
       }
     },
@@ -134,6 +150,7 @@ export const useTasksFeature = () => {
       handleToggleComplete,
       handleDeleteTask,
       handleLogout,
+      handleScrollToEndComplete, // New handler for scroll completion
     },
   };
 };

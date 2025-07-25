@@ -19,7 +19,14 @@ export default function HomeScreen() {
     screenState,
     taskStore,
     taskStats,
-    handlers: { handleRefresh, handleAddTask, handleToggleComplete, handleDeleteTask, handleLogout },
+    handlers: {
+      handleRefresh,
+      handleAddTask,
+      handleToggleComplete,
+      handleDeleteTask,
+      handleLogout,
+      handleScrollToEndComplete,
+    },
   } = useTasksFeature();
 
   const { toggleTheme } = useThemeStore();
@@ -110,6 +117,8 @@ export default function HomeScreen() {
           onRefresh={handleRefresh}
           onTaskComplete={handleToggleComplete}
           onTaskDelete={handleDeleteTask}
+          shouldScrollToEnd={screenState.shouldScrollToEnd}
+          onScrollToEndComplete={handleScrollToEndComplete}
         />
       </View>
 

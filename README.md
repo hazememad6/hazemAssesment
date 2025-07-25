@@ -320,6 +320,113 @@ export function GenericFlashList<T>({ data, renderItem, ... }: GenericFlashListP
 }
 ```
 
+### 📜 Auto-Scroll to New Tasks
+
+The application features intelligent auto-scroll functionality that automatically scrolls to newly added tasks, providing smooth user experience across both iOS and Android platforms.
+
+```typescript
+// Auto-Scroll Implementation (from TaskList.tsx)
+export const TaskList: React.FC<TaskListProps> = ({
+  tasks,
+  shouldScrollToEnd = false,
+  onScrollToEndComplete,
+  ...props
+}) => {
+  const flashListRef = useRef<FlashList<Task>>(null);
+
+  useEffect(() => {
+    if (shouldScrollToEnd && tasks.length > 0 && flashListRef.current) {
+      const scrollTimeout = setTimeout(() => {
+        try {
+          if (Platform.OS === 'android') {
+            // Android: Use scrollToIndex for precise positioning
+            const lastIndex = tasks.length - 1;
+            flashListRef.current.scrollToIndex({
+              index: lastIndex,
+              animated: true,
+              viewPosition: 0,
+            });
+          } else {
+            // iOS: Use scrollToEnd (more reliable for FlashList)
+            flashListRef.current.scrollToEnd({
+              animated: true
+            });
+          }
+        } catch (error) {
+          console.warn('[AutoScroll] Failed:', error);
+        }
+
+        if (onScrollToEndComplete) {
+          setTimeout(onScrollToEndComplete, 400);
+        }
+      }, 100);
+
+      return () => clearTimeout(scrollTimeout);
+    }
+  }, [shouldScrollToEnd, tasks.length, onScrollToEndComplete]);
+
+  return (
+    <GenericFlashList
+      ref={flashListRef}
+      data={tasks}
+      estimatedItemSize={120}
+      overrideItemLayout={(layout) => {
+        layout.size = 120; // Consistent sizing for smooth scrolling
+      }}
+      {...props}
+    />
+  );
+};
+
+// State Management for Auto-Scroll (from useTasks.ts)
+const handleAddTask = useCallback(async (taskData) => {
+  await addTaskMutation.mutateAsync(taskData);
+
+  // Trigger auto-scroll after successful task addition
+  setTimeout(() => {
+    setScreenState(prev => ({
+      ...prev,
+      shouldScrollToEnd: true
+    }));
+  }, 100);
+}, [addTaskMutation]);
+```
+
+#### Platform-Specific Optimizations
+
+**🤖 Android Implementation:**
+
+- Uses `scrollToIndex` with `viewPosition: 0` for precise positioning
+- Scrolls to the exact last item with smooth animation
+- Excellent performance and reliability
+
+**🍎 iOS Implementation:**
+
+- Uses `scrollToEnd` method (more reliable for FlashList on iOS)
+- Optimized timing and animation for iOS behavior
+- Handles FlashList's unique iOS characteristics
+
+#### Key Features
+
+- ✅ **Automatic Triggering**: Scrolls automatically when new tasks are added
+- ✅ **Platform Optimization**: Different strategies for iOS and Android
+- ✅ **Smooth Animation**: Animated scrolling for better UX
+- ✅ **Error Handling**: Graceful fallbacks if scrolling fails
+- ✅ **State Management**: Clean state reset after scroll completion
+- ✅ **Performance**: Minimal impact on list rendering performance
+
+#### Technical Details
+
+The auto-scroll system works through a combination of:
+
+1. **State Management**: `shouldScrollToEnd` flag triggers scroll behavior
+2. **Ref-based Control**: Direct FlashList ref manipulation for scroll commands
+3. **Optimistic Updates**: Scroll triggers after React Query optimistic updates
+4. **Consistent Sizing**: `overrideItemLayout` ensures predictable scroll positioning
+5. **Timing Coordination**: Proper delays ensure UI updates before scroll execution
+
+````
+
 ### 🎨 Design System & Theming
 
 ```typescript
@@ -357,7 +464,7 @@ export const useThemeStore = create<ThemeState>()(
     }
   )
 );
-```
+````
 
 ---
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { forwardRef, useCallback, useMemo } from "react";
 import { RefreshControl, Text, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useThemeStore } from "@store/themeStore";
@@ -6,20 +6,23 @@ import { LoadingSpinner } from "../LoadingSpinner";
 import { useGenericFlashListStyles } from "./styles";
 import { GenericFlashListProps } from "./types";
 
-export function GenericFlashList<T>({
-  data,
-  renderItem,
-  loading = false,
-  refreshing = false,
-  onRefresh,
-  refreshControlProps,
-  emptyComponent,
-  emptyText = "No items found",
-  keyExtractor,
-  estimatedItemSize = 100,
-  contentContainerStyle,
-  ...flashListProps
-}: GenericFlashListProps<T>) {
+export const GenericFlashList = forwardRef<FlashList<any>, GenericFlashListProps<any>>(function GenericFlashList<T>(
+  {
+    data,
+    renderItem,
+    loading = false,
+    refreshing = false,
+    onRefresh,
+    refreshControlProps,
+    emptyComponent,
+    emptyText = "No items found",
+    keyExtractor,
+    estimatedItemSize = 100,
+    contentContainerStyle,
+    ...flashListProps
+  }: GenericFlashListProps<T>,
+  ref: React.Ref<FlashList<any>>
+) {
   const { theme } = useThemeStore();
   const styles = useGenericFlashListStyles();
 
@@ -51,6 +54,7 @@ export function GenericFlashList<T>({
 
   return (
     <FlashList
+      ref={ref}
       data={data}
       renderItem={renderItem}
       keyExtractor={keyExtractor || defaultKeyExtractor}
@@ -72,4 +76,4 @@ export function GenericFlashList<T>({
       {...flashListProps}
     />
   );
-}
+});
