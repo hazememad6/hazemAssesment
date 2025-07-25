@@ -1,0 +1,597 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`TaskItem Component Snapshots renders completed task correctly 1`] = `
+<View
+  style={
+    {
+      "backgroundColor": "#F2F2F7",
+      "borderLeftColor": "#34C759",
+      "borderLeftWidth": 2,
+      "borderRadius": 8,
+      "elevation": 5,
+      "marginBottom": 8,
+      "padding": 24,
+      "shadowColor": "#000",
+      "shadowOffset": {
+        "height": 2,
+        "width": 0,
+      },
+      "shadowOpacity": 0.1,
+      "shadowRadius": 3.84,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "flex": 1,
+          "marginRight": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#000000",
+            "fontSize": undefined,
+            "fontWeight": "600",
+            "opacity": 0.7,
+            "textDecorationLine": "line-through",
+          }
+        }
+      >
+        Test Task
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#000000",
+            "fontSize": undefined,
+            "marginTop": 16,
+            "opacity": 0.7,
+          }
+        }
+      >
+        Test Description
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+        }
+      }
+    >
+      <RCTSwitch
+        accessibilityRole="switch"
+        onChange={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        onTintColor="#34C759"
+        style={
+          {
+            "height": 31,
+            "width": 51,
+          }
+        }
+        testID="task-switch-1"
+        thumbTintColor="#ffffff"
+        tintColor="#C6C6C8"
+        value={true}
+      />
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "transparent",
+            "borderColor": "#007AFF",
+            "borderRadius": undefined,
+            "borderWidth": 1,
+            "flexDirection": "row",
+            "justifyContent": "center",
+            "opacity": 1,
+            "paddingHorizontal": 8,
+            "paddingVertical": 16,
+          }
+        }
+        testID="delete-task-1"
+      >
+        <Text
+          style={
+            {
+              "color": "#007AFF",
+              "fontSize": undefined,
+              "fontWeight": "600",
+            }
+          }
+        >
+          Delete
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`TaskItem Component Snapshots renders incomplete task correctly 1`] = `
+<View
+  style={
+    {
+      "backgroundColor": "#F2F2F7",
+      "borderLeftColor": "#007AFF",
+      "borderLeftWidth": 2,
+      "borderRadius": 8,
+      "elevation": 5,
+      "marginBottom": 8,
+      "padding": 24,
+      "shadowColor": "#000",
+      "shadowOffset": {
+        "height": 2,
+        "width": 0,
+      },
+      "shadowOpacity": 0.1,
+      "shadowRadius": 3.84,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "flex": 1,
+          "marginRight": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#000000",
+            "fontSize": undefined,
+            "fontWeight": "600",
+            "opacity": 1,
+            "textDecorationLine": "none",
+          }
+        }
+      >
+        Test Task
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#000000",
+            "fontSize": undefined,
+            "marginTop": 16,
+            "opacity": 0.7,
+          }
+        }
+      >
+        Test Description
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+        }
+      }
+    >
+      <RCTSwitch
+        accessibilityRole="switch"
+        onChange={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        onTintColor="#34C759"
+        style={
+          {
+            "height": 31,
+            "width": 51,
+          }
+        }
+        testID="task-switch-1"
+        thumbTintColor="#f4f3f4"
+        tintColor="#C6C6C8"
+        value={false}
+      />
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "transparent",
+            "borderColor": "#007AFF",
+            "borderRadius": undefined,
+            "borderWidth": 1,
+            "flexDirection": "row",
+            "justifyContent": "center",
+            "opacity": 1,
+            "paddingHorizontal": 8,
+            "paddingVertical": 16,
+          }
+        }
+        testID="delete-task-1"
+      >
+        <Text
+          style={
+            {
+              "color": "#007AFF",
+              "fontSize": undefined,
+              "fontWeight": "600",
+            }
+          }
+        >
+          Delete
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`TaskItem Component Snapshots renders task with long title correctly 1`] = `
+<View
+  style={
+    {
+      "backgroundColor": "#F2F2F7",
+      "borderLeftColor": "#007AFF",
+      "borderLeftWidth": 2,
+      "borderRadius": 8,
+      "elevation": 5,
+      "marginBottom": 8,
+      "padding": 24,
+      "shadowColor": "#000",
+      "shadowOffset": {
+        "height": 2,
+        "width": 0,
+      },
+      "shadowOpacity": 0.1,
+      "shadowRadius": 3.84,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "flex": 1,
+          "marginRight": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#000000",
+            "fontSize": undefined,
+            "fontWeight": "600",
+            "opacity": 1,
+            "textDecorationLine": "none",
+          }
+        }
+      >
+        This is a very long task title that should wrap properly in the UI
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#000000",
+            "fontSize": undefined,
+            "marginTop": 16,
+            "opacity": 0.7,
+          }
+        }
+      >
+        Test Description
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+        }
+      }
+    >
+      <RCTSwitch
+        accessibilityRole="switch"
+        onChange={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        onTintColor="#34C759"
+        style={
+          {
+            "height": 31,
+            "width": 51,
+          }
+        }
+        testID="task-switch-1"
+        thumbTintColor="#f4f3f4"
+        tintColor="#C6C6C8"
+        value={false}
+      />
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "transparent",
+            "borderColor": "#007AFF",
+            "borderRadius": undefined,
+            "borderWidth": 1,
+            "flexDirection": "row",
+            "justifyContent": "center",
+            "opacity": 1,
+            "paddingHorizontal": 8,
+            "paddingVertical": 16,
+          }
+        }
+        testID="delete-task-1"
+      >
+        <Text
+          style={
+            {
+              "color": "#007AFF",
+              "fontSize": undefined,
+              "fontWeight": "600",
+            }
+          }
+        >
+          Delete
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`TaskItem Component Snapshots renders task without description correctly 1`] = `
+<View
+  style={
+    {
+      "backgroundColor": "#F2F2F7",
+      "borderLeftColor": "#007AFF",
+      "borderLeftWidth": 2,
+      "borderRadius": 8,
+      "elevation": 5,
+      "marginBottom": 8,
+      "padding": 24,
+      "shadowColor": "#000",
+      "shadowOffset": {
+        "height": 2,
+        "width": 0,
+      },
+      "shadowOpacity": 0.1,
+      "shadowRadius": 3.84,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "flex": 1,
+          "marginRight": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#000000",
+            "fontSize": undefined,
+            "fontWeight": "600",
+            "opacity": 1,
+            "textDecorationLine": "none",
+          }
+        }
+      >
+        Test Task
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 8,
+        }
+      }
+    >
+      <RCTSwitch
+        accessibilityRole="switch"
+        onChange={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        onTintColor="#34C759"
+        style={
+          {
+            "height": 31,
+            "width": 51,
+          }
+        }
+        testID="task-switch-1"
+        thumbTintColor="#f4f3f4"
+        tintColor="#C6C6C8"
+        value={false}
+      />
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onClick={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "transparent",
+            "borderColor": "#007AFF",
+            "borderRadius": undefined,
+            "borderWidth": 1,
+            "flexDirection": "row",
+            "justifyContent": "center",
+            "opacity": 1,
+            "paddingHorizontal": 8,
+            "paddingVertical": 16,
+          }
+        }
+        testID="delete-task-1"
+      >
+        <Text
+          style={
+            {
+              "color": "#007AFF",
+              "fontSize": undefined,
+              "fontWeight": "600",
+            }
+          }
+        >
+          Delete
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
