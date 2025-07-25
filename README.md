@@ -40,6 +40,30 @@ _[Video will be embedded here showing the complete application functionality, co
 
 ---
 
+# ⚠️ **IMPORTANT: BIOMETRIC AUTHENTICATION NOTICE**
+
+## 🔐 **BIOMETRIC LOGIN REQUIRES NATIVE BUILD**
+
+### **❌ DOES NOT WORK IN EXPO GO**
+
+### **✅ WORKS ONLY IN NATIVE/DEVELOPMENT BUILDS**
+
+The biometric authentication feature (Face ID, Touch ID, Fingerprint) **requires native device permissions** and **will NOT function** in the Expo Go development app.
+
+**To test biometric authentication:**
+
+- Use `npx expo run:ios` or `npx expo run:android` for development builds
+- Create production builds with `eas build`
+- Install the app directly on device (not through Expo Go)
+
+**Alternative in Expo Go:**
+
+- Use the regular email/password login
+- Biometric options will be hidden automatically
+- All other features work normally
+
+---
+
 ## 🏗️ Technology Stack & Architecture
 
 ### Core Technologies
