@@ -73,7 +73,14 @@ export const TaskList: React.FC<TaskListProps> = ({
   }, []);
 
   const renderTaskItem = useCallback(
-    ({ item }: { item: Task }) => <TaskItem task={item} onComplete={onTaskComplete} onDelete={onTaskDelete} />,
+    ({ item }: { item: Task }) => (
+      <TaskItem
+        task={item}
+        onComplete={onTaskComplete}
+        onDelete={onTaskDelete}
+        // Remove isUpdating and isDeleting props - let TaskItem handle its own loading states
+      />
+    ),
     [onTaskComplete, onTaskDelete]
   );
 

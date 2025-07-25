@@ -108,7 +108,7 @@ export const useTasksFeature = () => {
   // delete with confirmation dialog
   const handleDeleteTask = useCallback(
     (id: string) => {
-      if (deleteTaskMutation.isPending) return; // prevent multiple deletes
+      console.log(`[useTasks] Delete requested for task ${id}`);
 
       Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
         { text: "Cancel", style: "cancel" },
@@ -116,7 +116,8 @@ export const useTasksFeature = () => {
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            deleteTaskMutation.mutate(id); // also using mutate here for consistency
+            console.log(`[useTasks] User confirmed delete for task ${id}`);
+            deleteTaskMutation.mutate(id);
           },
         },
       ]);

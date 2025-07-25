@@ -162,14 +162,16 @@ export const useDeleteTaskMutation = () => {
   return useApiMutation(MUTATION_KEYS.tasks.delete, (id: string) => taskApi.deleteTask(id), {
     invalidate: [QUERY_KEYS.tasks.all],
     onMutate: async (id) => {
-      // same pattern - cancel, snapshot, update
+      console.log(`[Delete Mutation] Starting delete for task ${id}`);
+
+      // Cancel outgoing queries and get snapshot
       await queryClient.cancelQueries({ queryKey: QUERY_KEYS.tasks.all });
       const previousTasks = queryClient.getQueryData<Task[]>(QUERY_KEYS.tasks.all);
 
-      // remove immediately from UI
+      // Remove task immediately from UI (optimistic update)
       queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks.all, (old = []) => old.filter((task) => task.id !== id));
 
-      // quick feedback
+      // Show immediate feedback
       Toast.show({
         type: "success",
         text1: "Task Deleted ✅",
@@ -178,21 +180,30 @@ export const useDeleteTaskMutation = () => {
 
       return { previousTasks };
     },
+    onSuccess: (data, variables) => {
+      console.log(`[Delete Mutation] Success for task ${variables}`);
+      // Task already removed optimistically, just log success
+    },
     onError: (error, variables, context) => {
-      // handle same "not found" case
-      if (error.message === "Task not found") {
-        Toast.show({
-          type: "info",
-          text1: "Task already removed",
-          text2: "This task wasn't saved before the app was closed",
-          visibilityTime: 2000,
-        });
-      } else {
-        // restore the task if it was a real error
-        if (context?.previousTasks) {
-          queryClient.setQueryData(QUERY_KEYS.tasks.all, context.previousTasks);
-        }
+      console.log(`[Delete Mutation] Error for task ${variables}:`, error.message);
+
+      // Rollback optimistic update
+      if (context?.previousTasks) {
+        queryClient.setQueryData(QUERY_KEYS.tasks.all, context.previousTasks);
       }
+
+      // Show error feedback
+      Toast.show({
+        type: "error",
+        text1: "Delete Failed",
+        text2: error.message,
+        visibilityTime: 3000,
+      });
+    },
+    onSettled: (data, error, variables) => {
+      console.log(`[Delete Mutation] Settled for task ${variables} - mutation complete`);
+      // Ensure queries are invalidated to refresh data
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks.all });
     },
   });
 };

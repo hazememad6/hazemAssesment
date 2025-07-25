@@ -17,75 +17,68 @@ import { useTaskItemStyles } from "./styles";
  *
  * Fixed toggle issue - Switch onValueChange passes boolean value that we need to handle properly.
  */
-const TaskItem: React.FC<TaskItemProps> = memo(
-  ({ task, onComplete, onDelete, isUpdating = false, isDeleting = false }) => {
-    const styles = useTaskItemStyles(task);
+const TaskItem: React.FC<TaskItemProps> = memo(({ task, onComplete, onDelete }) => {
+  const styles = useTaskItemStyles(task);
 
-    // Simplified animation - just opacity for the content
-    const contentOpacity = useRef(new Animated.Value(task.completed ? 0.7 : 1)).current;
+  // Simplified animation - just opacity for the content to prevent conflicts
+  const contentOpacity = useRef(new Animated.Value(task.completed ? 0.7 : 1)).current;
 
-    // Simple fade animation only - removed complex animations that caused freezing
-    useEffect(() => {
-      Animated.timing(contentOpacity, {
-        toValue: task.completed ? 0.7 : 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    }, [task.completed, contentOpacity]);
+  // Simple fade animation only - removed complex animations that caused freezing
+  useEffect(() => {
+    Animated.timing(contentOpacity, {
+      toValue: task.completed ? 0.7 : 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [task.completed, contentOpacity]);
 
-    // Handle completion toggle - receives the new boolean value from Switch
-    const handleToggleComplete = (newValue: boolean) => {
-      if (isUpdating) return; // prevent toggle during update
+  // Handle completion toggle - receives the new boolean value from Switch
+  const handleToggleComplete = (newValue: boolean) => {
+    // Only call if the value actually changed to prevent unnecessary calls
+    if (newValue !== task.completed) {
+      onComplete(task.id);
+    }
+  };
 
-      // Only call if the value actually changed to prevent unnecessary calls
-      if (newValue !== task.completed) {
-        onComplete(task.id);
-      }
-    };
+  const handleDelete = () => {
+    console.log(`[TaskItem] Delete button clicked for task ${task.id}`);
+    onDelete(task.id);
+  };
 
-    const handleDelete = () => {
-      if (isDeleting) return; // prevent delete during deletion
-      onDelete(task.id);
-    };
-
-    return (
-      <View style={styles.containerStyle}>
-        <View style={styles.rowStyle}>
-          <Animated.View style={[styles.contentStyle, { opacity: contentOpacity }]}>
-            <Text style={styles.titleStyle} numberOfLines={2}>
-              {task.title}
+  return (
+    <View style={styles.containerStyle}>
+      <View style={styles.rowStyle}>
+        <Animated.View style={[styles.contentStyle, { opacity: contentOpacity }]}>
+          <Text style={styles.titleStyle} numberOfLines={2}>
+            {task.title}
+          </Text>
+          {task.description && task.description.trim().length > 0 && (
+            <Text style={styles.descriptionStyle} numberOfLines={3}>
+              {task.description}
             </Text>
-            {task.description && task.description.trim().length > 0 && (
-              <Text style={styles.descriptionStyle} numberOfLines={3}>
-                {task.description}
-              </Text>
-            )}
-          </Animated.View>
+          )}
+        </Animated.View>
 
-          <View style={styles.actionsStyle}>
-            <Switch
-              value={task.completed}
-              onValueChange={handleToggleComplete}
-              disabled={isUpdating} // disable during update
-              testID={`task-switch-${task.id}`} // Add testID for tests
-              accessibilityLabel={`Mark task ${task.completed ? "incomplete" : "complete"}`}
-            />
+        <View style={styles.actionsStyle}>
+          <Switch
+            value={task.completed}
+            onValueChange={handleToggleComplete}
+            testID={`task-switch-${task.id}`} // Add testID for tests
+            accessibilityLabel={`Mark task ${task.completed ? "incomplete" : "complete"}`}
+          />
 
-            <Button
-              title="Delete"
-              onPress={handleDelete}
-              variant="outline"
-              size="small"
-              disabled={isDeleting} // disable during deletion
-              loading={isDeleting} // show loading spinner
-              testID={`delete-task-${task.id}`} // Add testID for tests
-            />
-          </View>
+          <Button
+            title="Delete"
+            onPress={handleDelete}
+            variant="outline"
+            size="small"
+            testID={`delete-task-${task.id}`} // Add testID for tests
+          />
         </View>
       </View>
-    );
-  }
-);
+    </View>
+  );
+});
 
 TaskItem.displayName = "TaskItem";
 

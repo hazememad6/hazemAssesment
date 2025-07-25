@@ -2,7 +2,6 @@
 
 exports[`TaskItem Component Snapshots renders completed task correctly 1`] = `
 <View
-  collapsable={false}
   style={
     {
       "backgroundColor": "#F2F2F7",
@@ -11,7 +10,6 @@ exports[`TaskItem Component Snapshots renders completed task correctly 1`] = `
       "borderRadius": 8,
       "elevation": 5,
       "marginBottom": 8,
-      "opacity": 1,
       "padding": 24,
       "shadowColor": "#000",
       "shadowOffset": {
@@ -20,11 +18,6 @@ exports[`TaskItem Component Snapshots renders completed task correctly 1`] = `
       },
       "shadowOpacity": 0.1,
       "shadowRadius": 3.84,
-      "transform": [
-        {
-          "scale": 1,
-        },
-      ],
       "transformOrigin": "center",
     }
   }
@@ -87,7 +80,6 @@ exports[`TaskItem Component Snapshots renders completed task correctly 1`] = `
       <RCTSwitch
         accessibilityLabel="Mark task incomplete"
         accessibilityRole="switch"
-        disabled={false}
         onChange={[Function]}
         onResponderTerminationRequest={[Function]}
         onStartShouldSetResponder={[Function]}
@@ -164,7 +156,6 @@ exports[`TaskItem Component Snapshots renders completed task correctly 1`] = `
 
 exports[`TaskItem Component Snapshots renders incomplete task correctly 1`] = `
 <View
-  collapsable={false}
   style={
     {
       "backgroundColor": "#F2F2F7",
@@ -173,7 +164,6 @@ exports[`TaskItem Component Snapshots renders incomplete task correctly 1`] = `
       "borderRadius": 8,
       "elevation": 5,
       "marginBottom": 8,
-      "opacity": 1,
       "padding": 24,
       "shadowColor": "#000",
       "shadowOffset": {
@@ -182,11 +172,6 @@ exports[`TaskItem Component Snapshots renders incomplete task correctly 1`] = `
       },
       "shadowOpacity": 0.1,
       "shadowRadius": 3.84,
-      "transform": [
-        {
-          "scale": 1,
-        },
-      ],
       "transformOrigin": "center",
     }
   }
@@ -249,7 +234,6 @@ exports[`TaskItem Component Snapshots renders incomplete task correctly 1`] = `
       <RCTSwitch
         accessibilityLabel="Mark task complete"
         accessibilityRole="switch"
-        disabled={false}
         onChange={[Function]}
         onResponderTerminationRequest={[Function]}
         onStartShouldSetResponder={[Function]}
@@ -326,7 +310,6 @@ exports[`TaskItem Component Snapshots renders incomplete task correctly 1`] = `
 
 exports[`TaskItem Component Snapshots renders task with long title correctly 1`] = `
 <View
-  collapsable={false}
   style={
     {
       "backgroundColor": "#F2F2F7",
@@ -335,7 +318,6 @@ exports[`TaskItem Component Snapshots renders task with long title correctly 1`]
       "borderRadius": 8,
       "elevation": 5,
       "marginBottom": 8,
-      "opacity": 1,
       "padding": 24,
       "shadowColor": "#000",
       "shadowOffset": {
@@ -344,11 +326,6 @@ exports[`TaskItem Component Snapshots renders task with long title correctly 1`]
       },
       "shadowOpacity": 0.1,
       "shadowRadius": 3.84,
-      "transform": [
-        {
-          "scale": 1,
-        },
-      ],
       "transformOrigin": "center",
     }
   }
@@ -411,7 +388,6 @@ exports[`TaskItem Component Snapshots renders task with long title correctly 1`]
       <RCTSwitch
         accessibilityLabel="Mark task complete"
         accessibilityRole="switch"
-        disabled={false}
         onChange={[Function]}
         onResponderTerminationRequest={[Function]}
         onStartShouldSetResponder={[Function]}
@@ -488,7 +464,6 @@ exports[`TaskItem Component Snapshots renders task with long title correctly 1`]
 
 exports[`TaskItem Component Snapshots renders task without description correctly 1`] = `
 <View
-  collapsable={false}
   style={
     {
       "backgroundColor": "#F2F2F7",
@@ -497,7 +472,6 @@ exports[`TaskItem Component Snapshots renders task without description correctly
       "borderRadius": 8,
       "elevation": 5,
       "marginBottom": 8,
-      "opacity": 1,
       "padding": 24,
       "shadowColor": "#000",
       "shadowOffset": {
@@ -506,11 +480,6 @@ exports[`TaskItem Component Snapshots renders task without description correctly
       },
       "shadowOpacity": 0.1,
       "shadowRadius": 3.84,
-      "transform": [
-        {
-          "scale": 1,
-        },
-      ],
       "transformOrigin": "center",
     }
   }
@@ -560,7 +529,6 @@ exports[`TaskItem Component Snapshots renders task without description correctly
       <RCTSwitch
         accessibilityLabel="Mark task complete"
         accessibilityRole="switch"
-        disabled={false}
         onChange={[Function]}
         onResponderTerminationRequest={[Function]}
         onStartShouldSetResponder={[Function]}
