@@ -11,10 +11,9 @@ import { useTaskItemStyles } from "./styles";
  * Displays individual task with toggle and delete actions.
  * Using Switch instead of checkbox because it feels more native on mobile.
  *
- * Added smooth animations for completion state:
- * - Fade effect when completing/uncompleting
- * - Scale bounce animation on completion
- * - Smooth opacity transitions for completed state
+ * Simplified animations to prevent conflicts with optimistic updates:
+ * - Simple opacity transition for completed state
+ * - Removed complex scale animations that were causing freezing
  *
  * Fixed toggle issue - Switch onValueChange passes boolean value that we need to handle properly.
  */
@@ -22,46 +21,17 @@ const TaskItem: React.FC<TaskItemProps> = memo(
   ({ task, onComplete, onDelete, isUpdating = false, isDeleting = false }) => {
     const styles = useTaskItemStyles(task);
 
-    // Animation values
-    const fadeAnim = useRef(new Animated.Value(1)).current;
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const opacityAnim = useRef(new Animated.Value(task.completed ? 0.7 : 1)).current;
+    // Simplified animation - just opacity for the content
+    const contentOpacity = useRef(new Animated.Value(task.completed ? 0.7 : 1)).current;
 
-    // Animate when completion state changes
+    // Simple fade animation only - removed complex animations that caused freezing
     useEffect(() => {
-      if (task.completed) {
-        // Completion animation: scale bounce + fade
-        Animated.sequence([
-          // Quick scale up
-          Animated.timing(scaleAnim, {
-            toValue: 1.05,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-          // Scale back down with slight overshoot
-          Animated.spring(scaleAnim, {
-            toValue: 1,
-            tension: 300,
-            friction: 10,
-            useNativeDriver: true,
-          }),
-        ]).start();
-
-        // Fade to completed state
-        Animated.timing(opacityAnim, {
-          toValue: 0.7,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
-      } else {
-        // Uncomplete animation: just fade back in
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      }
-    }, [task.completed, scaleAnim, opacityAnim]);
+      Animated.timing(contentOpacity, {
+        toValue: task.completed ? 0.7 : 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }, [task.completed, contentOpacity]);
 
     // Handle completion toggle - receives the new boolean value from Switch
     const handleToggleComplete = (newValue: boolean) => {
@@ -79,17 +49,9 @@ const TaskItem: React.FC<TaskItemProps> = memo(
     };
 
     return (
-      <Animated.View
-        style={[
-          styles.containerStyle,
-          {
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          },
-        ]}
-      >
+      <View style={styles.containerStyle}>
         <View style={styles.rowStyle}>
-          <Animated.View style={[styles.contentStyle, { opacity: opacityAnim }]}>
+          <Animated.View style={[styles.contentStyle, { opacity: contentOpacity }]}>
             <Text style={styles.titleStyle} numberOfLines={2}>
               {task.title}
             </Text>
@@ -120,7 +82,7 @@ const TaskItem: React.FC<TaskItemProps> = memo(
             />
           </View>
         </View>
-      </Animated.View>
+      </View>
     );
   }
 );

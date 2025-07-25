@@ -278,62 +278,42 @@ export const useAddTaskMutation = () => {
 ### 🎨 Task Completion Animations
 
 ```typescript
-// Smooth animations for task completion (from TaskItem.tsx)
+// Simplified animations for task completion (from TaskItem.tsx)
 const TaskItem: React.FC<TaskItemProps> = memo(({ task, onComplete, onDelete, isUpdating, isDeleting }) => {
-  // Animation values for smooth transitions
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const opacityAnim = useRef(new Animated.Value(task.completed ? 0.7 : 1)).current;
+  // Simplified animation - just opacity for the content to prevent conflicts
+  const contentOpacity = useRef(new Animated.Value(task.completed ? 0.7 : 1)).current;
 
-  // Animate when completion state changes
+  // Simple fade animation only - removed complex animations that caused freezing
   useEffect(() => {
-    if (task.completed) {
-      // Completion animation: scale bounce + fade
-      Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 1.05,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 300,
-          friction: 10,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      // Fade to completed state
-      Animated.timing(opacityAnim, {
-        toValue: 0.7,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      // Uncomplete animation: fade back in
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [task.completed, scaleAnim, opacityAnim]);
+    Animated.timing(contentOpacity, {
+      toValue: task.completed ? 0.7 : 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [task.completed, contentOpacity]);
 
   return (
-    <Animated.View
-      style={[
-        styles.containerStyle,
-        {
-          opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }]
-        }
-      ]}
-    >
-      {/* Task content with smooth animations */}
-    </Animated.View>
+    <View style={styles.containerStyle}>
+      <View style={styles.rowStyle}>
+        <Animated.View style={[styles.contentStyle, { opacity: contentOpacity }]}>
+          <Text style={styles.titleStyle} numberOfLines={2}>
+            {task.title}
+          </Text>
+          {/* Task content with simple fade animation */}
+        </Animated.View>
+        {/* Switch and action buttons */}
+      </View>
+    </View>
   );
 });
 ```
+
+**Animation Features:**
+
+- ✅ **Simplified Opacity Animation**: Smooth fade transition for completed tasks
+- ✅ **Performance Optimized**: Removed complex scale animations that caused UI freezing
+- ✅ **Native Driver**: Uses native animations for 60fps performance
+- ✅ **Optimistic Updates Compatible**: Works seamlessly with React Query mutations
 
 ### 🚀 High-Performance List Rendering
 
