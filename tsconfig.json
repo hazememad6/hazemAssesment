@@ -1,0 +1,26 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "jsx": "react",
+    "strict": true,
+    "paths": {
+      "@assets/*": ["assets/*"],
+      "@app/*": ["app/*"],
+      "@api/*": ["src/api/*"],
+      "@components/*": ["src/components/*"],
+      "@features/*": ["src/features/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@providers/*": ["src/providers/*"],
+      "@query/*": ["src/query/*"],
+      "@query": ["src/query"],
+      "@storage/*": ["src/storage/*"],
+      "@store/*": ["src/store/*"],
+      "@store": ["src/store"],
+      "@utils/*": ["src/utils/*"],
+      "@utils": ["src/utils"],
+      "@api": ["src/api"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
+}
