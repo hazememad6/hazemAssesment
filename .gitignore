@@ -67,22 +67,9 @@ pids
 build/
 dist/
 
-# Android
-android/app/build/
-android/build/
-android/.gradle/
-android/local.properties
-android/app/src/main/assets/index.android.bundle
-android/app/src/main/res/drawable-*
-android/app/src/main/res/raw/
-
-# iOS
-ios/build/
-ios/Pods/
-ios/*.xcworkspace/xcuserdata
-ios/*.xcodeproj/xcuserdata
-ios/*.xcodeproj/project.xcworkspace/xcuserdata
-ios/.xcode.env.local
+# Native Platform Files
+android/
+ios/
 
 # Temporary files
 *.tmp
