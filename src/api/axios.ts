@@ -4,8 +4,8 @@ import { ApiError } from "@query/queryKeys";
 import Constants from "expo-constants";
 import Toast from "react-native-toast-message";
 
-// api config from expo config
-const API_BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl || "https://jsonplaceholder.typicode.com";
+// api config from expo config - fallback to local dev server
+const API_BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl || "http://localhost:3001";
 const API_TIMEOUT = Constants.expoConfig?.extra?.apiTimeout || 10000;
 
 // custom error class - probably overkill but looks professional
