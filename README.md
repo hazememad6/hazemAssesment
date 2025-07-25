@@ -14,15 +14,6 @@ A production-ready, secure mobile task management application built with React N
 **🤖 Android Demo:**
 [Watch Android App Demonstration](https://drive.google.com/file/d/1pG2rreYGZrOePxdu-GRYIF9pv870aU4T/view?usp=drive_link)
 
-**Video Topics Covered:**
-
-- ✅ Application walkthrough and features
-- ✅ Code architecture and structure
-- ✅ Testing implementation and coverage
-- ✅ Performance optimizations
-- ✅ Security implementations
-- ✅ Development workflow and best practices
-
 ---
 
 ## 🎯 Project Strategy & Vision
