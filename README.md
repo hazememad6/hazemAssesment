@@ -6,7 +6,13 @@ A production-ready, secure mobile task management application built with React N
 
 ## 📱 Assessment Video Demonstration
 
-_[Video will be embedded here showing the complete application functionality, code structure, and technical implementation]_
+### 🎥 Platform-Specific Demo Videos
+
+**📱 iOS Demo:**
+[Watch iOS App Demonstration](https://drive.google.com/file/d/16ffwYS4ZgQWFmaQdj5wqeIqmrO7rv2gu/view?usp=drive_link)
+
+**🤖 Android Demo:**
+[Watch Android App Demonstration](https://drive.google.com/file/d/1pG2rreYGZrOePxdu-GRYIF9pv870aU4T/view?usp=drive_link)
 
 **Video Topics Covered:**
 
