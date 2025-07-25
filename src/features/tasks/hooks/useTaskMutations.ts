@@ -1,10 +1,11 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { QUERY_KEYS } from "@query/queryKeys";
+import { Task } from "src/types/task";
 import Toast from "react-native-toast-message";
 import { taskApi } from "@api/taskApi";
-import { QUERY_KEYS } from "@query/queryKeys";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Task } from "src/types/task";
 
-// Simple add task mutation with optimistic update
+// Simple add task mutation - always succeeds locally
 export const useAddTaskMutation = () => {
   const queryClient = useQueryClient();
 
@@ -16,23 +17,15 @@ export const useAddTaskMutation = () => {
         completed: taskData.completed || false,
       }),
     onMutate: async (taskData) => {
-      // Show instant success toast
-      Toast.show({
-        type: "success",
-        text1: "Task Added!",
-        text2: taskData.title,
-        visibilityTime: 2000,
-      });
-
-      // Cancel outgoing refetches so they don't overwrite optimistic update
+      // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: QUERY_KEYS.tasks.all });
 
       // Snapshot previous value
       const previousTasks = queryClient.getQueryData<Task[]>(QUERY_KEYS.tasks.all);
 
-      // Optimistically update to new value
+      // Create optimistic task with unique ID
       const optimisticTask: Task = {
-        id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         title: taskData.title,
         description: taskData.description || "",
         completed: taskData.completed || false,
@@ -40,19 +33,31 @@ export const useAddTaskMutation = () => {
         updatedAt: new Date().toISOString(),
       };
 
+      // Optimistically update cache
       queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks.all, (old = []) => [...old, optimisticTask]);
+
+      // Show instant feedback
+      Toast.show({
+        type: "success",
+        text1: "Task Added! ✅",
+        text2: taskData.title,
+        visibilityTime: 2000,
+      });
 
       return { previousTasks, optimisticTask };
     },
     onSuccess: (newTask, variables, context) => {
-      // Replace optimistic task with real task
+      // Replace optimistic task with real task from server
       queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks.all, (old = []) =>
         old.map((task) => (task.id === context?.optimisticTask.id ? newTask : task))
       );
     },
     onError: (error, variables, context) => {
       // Rollback on error
-      queryClient.setQueryData(QUERY_KEYS.tasks.all, context?.previousTasks);
+      if (context?.previousTasks) {
+        queryClient.setQueryData(QUERY_KEYS.tasks.all, context.previousTasks);
+      }
+
       Toast.show({
         type: "error",
         text1: "Failed to add task",
@@ -62,28 +67,23 @@ export const useAddTaskMutation = () => {
   });
 };
 
-// Simple update task mutation with better error handling
+// Simple update task mutation - always succeeds locally
 export const useUpdateTaskMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Task> }) => {
-      // Skip temporary tasks (they don't exist on server yet)
-      if (id.startsWith("temp_")) {
-        throw new Error("Cannot update temporary task");
-      }
-      return taskApi.updateTask(id, updates);
-    },
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<Task> }) => taskApi.updateTask(id, updates),
     onMutate: async ({ id, updates }) => {
-      // Skip optimistic update for temporary tasks
-      if (id.startsWith("temp_")) {
-        Toast.show({
-          type: "error",
-          text1: "Please wait",
-          text2: "Task is still being saved...",
-        });
-        return;
-      }
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.tasks.all });
+
+      // Snapshot previous value
+      const previousTasks = queryClient.getQueryData<Task[]>(QUERY_KEYS.tasks.all);
+
+      // Optimistically update
+      queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks.all, (old = []) =>
+        old.map((task) => (task.id === id ? { ...task, ...updates, updatedAt: new Date().toISOString() } : task))
+      );
 
       // Show instant feedback
       if (updates.completed !== undefined) {
@@ -94,88 +94,85 @@ export const useUpdateTaskMutation = () => {
         });
       }
 
-      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.tasks.all });
-
-      const previousTasks = queryClient.getQueryData<Task[]>(QUERY_KEYS.tasks.all);
-
-      // Optimistically update
-      queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks.all, (old = []) =>
-        old.map((task) => (task.id === id ? { ...task, ...updates, updatedAt: new Date().toISOString() } : task))
-      );
-
       return { previousTasks };
     },
     onError: (error, variables, context) => {
-      // Rollback on error
-      if (context?.previousTasks) {
-        queryClient.setQueryData(QUERY_KEYS.tasks.all, context.previousTasks);
+      // Handle task not found gracefully (normal for optimistic updates)
+      if (error.message === "Task not found") {
+        // Remove the orphaned task from cache
+        queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks.all, (old = []) =>
+          old.filter((task) => task.id !== variables.id)
+        );
+
+        Toast.show({
+          type: "info",
+          text1: "Task was removed",
+          text2: "This task wasn't saved before the app was closed",
+          visibilityTime: 3000,
+        });
+      } else {
+        // Rollback on other errors
+        if (context?.previousTasks) {
+          queryClient.setQueryData(QUERY_KEYS.tasks.all, context.previousTasks);
+        }
+
+        Toast.show({
+          type: "error",
+          text1: "Update failed",
+          text2: "Please try again",
+        });
       }
-
-      // Refresh data from server to sync
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks.all });
-
-      Toast.show({
-        type: "error",
-        text1: "Update failed",
-        text2: "Refreshing data...",
-      });
     },
   });
 };
 
-// Simple delete task mutation with better error handling
+// Simple delete task mutation - always succeeds locally
 export const useDeleteTaskMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      // Skip temporary tasks (they don't exist on server yet)
-      if (id.startsWith("temp_")) {
-        throw new Error("Cannot delete temporary task");
-      }
-      return taskApi.deleteTask(id);
-    },
+    mutationFn: (id: string) => taskApi.deleteTask(id),
     onMutate: async (id) => {
-      // Skip optimistic update for temporary tasks
-      if (id.startsWith("temp_")) {
-        Toast.show({
-          type: "error",
-          text1: "Please wait",
-          text2: "Task is still being saved...",
-        });
-        return;
-      }
-
-      // Show instant feedback
-      Toast.show({
-        type: "success",
-        text1: "Task Deleted",
-        visibilityTime: 1500,
-      });
-
+      // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: QUERY_KEYS.tasks.all });
 
+      // Snapshot previous value
       const previousTasks = queryClient.getQueryData<Task[]>(QUERY_KEYS.tasks.all);
 
       // Optimistically remove task
       queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks.all, (old = []) => old.filter((task) => task.id !== id));
 
+      // Show instant feedback
+      Toast.show({
+        type: "success",
+        text1: "Task Deleted ✅",
+        visibilityTime: 1500,
+      });
+
       return { previousTasks };
     },
     onError: (error, variables, context) => {
-      // Rollback on error
-      if (context?.previousTasks) {
-        queryClient.setQueryData(QUERY_KEYS.tasks.all, context.previousTasks);
+      // Handle task not found gracefully (normal for optimistic updates)
+      if (error.message === "Task not found") {
+        // Task was already removed (either by cache validation or it never existed)
+        Toast.show({
+          type: "info",
+          text1: "Task already removed",
+          text2: "This task wasn't saved before the app was closed",
+          visibilityTime: 2000,
+        });
+      } else {
+        // Rollback on other errors
+        if (context?.previousTasks) {
+          queryClient.setQueryData(QUERY_KEYS.tasks.all, context.previousTasks);
+        }
+
+        Toast.show({
+          type: "error",
+          text1: "Delete failed",
+          text2: "Please try again",
+        });
       }
-
-      // Refresh data from server to sync
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks.all });
-
-      Toast.show({
-        type: "error",
-        text1: "Delete failed",
-        text2: "Refreshing data...",
-      });
     },
   });
 };

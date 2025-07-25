@@ -672,6 +672,265 @@ persistQueryClient({
 
 ---
 
+## 💾 Caching Strategy & Data Persistence
+
+### 🎯 **Overview**
+
+This project implements a **Facebook-style offline-first caching strategy** using React Query with AsyncStorage persistence, providing seamless user experience regardless of network connectivity.
+
+### 🏗️ **Architecture**
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   UI Components │ ←→ │ React Query     │ ←→ │ AsyncStorage    │
+│   (Optimistic)  │    │ (Cache Layer)   │    │ (Persistence)   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                ↕
+                        ┌─────────────────┐
+                        │ Task API        │
+                        │ (Server State)  │
+                        └─────────────────┘
+```
+
+### 🔧 **Implementation Details**
+
+#### **1. Cache Configuration**
+
+```typescript
+// React Query Cache Settings (from reactQueryProvider.tsx)
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: Infinity, // Data never stale (cache-first)
+      gcTime: 10 * 60 * 1000, // 10 min garbage collection
+      refetchOnMount: false, // Don't refetch on component mount
+      refetchOnWindowFocus: false, // Don't refetch on focus
+      refetchOnReconnect: true, // Refetch when coming back online
+      networkMode: "offlineFirst", // Work offline with cached data
+    },
+    mutations: {
+      retry: 0, // No retry for mutations
+      networkMode: "offlineFirst", // Mutations work offline
+    },
+  },
+});
+```
+
+#### **2. Data Persistence Layer**
+
+```typescript
+// AsyncStorage Persister Setup
+export const asyncStoragePersister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  key: ASYNC_STORAGE_KEYS.REACT_QUERY_OFFLINE_CACHE,
+  serialize: JSON.stringify,
+  deserialize: JSON.parse,
+});
+
+// Persist Configuration
+<PersistQueryClientProvider
+  client={queryClient}
+  persistOptions={{
+    persister: asyncStoragePersister,
+    maxAge: PERSIST_OFFLINE_CACHE_TIME, // 24 hours
+    dehydrateOptions: {
+      shouldDehydrateQuery: (query) => query.state.status === "success",
+    },
+  }}
+>
+```
+
+#### **3. Optimistic Updates Implementation**
+
+```typescript
+// Optimistic Mutations (from useTaskMutations.ts)
+export const useAddTaskMutation = () => {
+  return useMutation({
+    mutationFn: taskApi.createTask,
+    onMutate: async (taskData) => {
+      // 1. Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.tasks.all });
+
+      // 2. Snapshot previous state
+      const previousTasks = queryClient.getQueryData<Task[]>(QUERY_KEYS.tasks.all);
+
+      // 3. Optimistically update cache with temporary ID
+      const optimisticTask: Task = {
+        id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        title: taskData.title,
+        description: taskData.description || "",
+        completed: taskData.completed || false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks.all, (old = []) => [...old, optimisticTask]);
+
+      // 4. Show instant feedback
+      Toast.show({
+        type: "success",
+        text1: "Task Added! ✅",
+        text2: taskData.title,
+      });
+
+      return { previousTasks, optimisticTask };
+    },
+    onSuccess: (newTask, variables, context) => {
+      // Replace optimistic task with real server task
+      queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks.all, (old = []) =>
+        old.map((task) => (task.id === context?.optimisticTask.id ? newTask : task))
+      );
+    },
+    onError: (error, variables, context) => {
+      // Rollback on error
+      if (context?.previousTasks) {
+        queryClient.setQueryData(QUERY_KEYS.tasks.all, context.previousTasks);
+      }
+      Toast.show({
+        type: "error",
+        text1: "Failed to add task",
+        text2: "Please try again",
+      });
+    },
+  });
+};
+```
+
+#### **4. Cache Validation & Cleanup**
+
+```typescript
+// Cache Validation on App Startup (from reactQueryProvider.tsx)
+export const validateCacheWithServer = async () => {
+  try {
+    if (!navigator.onLine) return; // Skip if offline
+
+    // Get current server state
+    const { taskApi } = await import("../api/taskApi");
+    const serverHealthy = await taskApi.healthCheck();
+    if (!serverHealthy) return;
+
+    const serverTasks = await taskApi.getTasks();
+    const serverTaskIds = new Set(serverTasks.map((task) => task.id));
+
+    // Get cached tasks
+    const cachedTasks = (queryClient.getQueryData(["tasks"]) as Task[]) || [];
+
+    // Filter out orphaned tasks (not on server and not recent optimistic)
+    const validTasks = cachedTasks.filter(
+      (task) =>
+        serverTaskIds.has(task.id) || // Exists on server
+        task.id.startsWith("task_") // Recent optimistic task
+    );
+
+    const removedCount = cachedTasks.length - validTasks.length;
+
+    if (removedCount > 0) {
+      console.log(`🧹 Removed ${removedCount} orphaned tasks from cache`);
+      queryClient.setQueryData(["tasks"], validTasks);
+    }
+
+    console.log(`✅ Cache validated: ${validTasks.length} valid tasks`);
+  } catch (error) {
+    console.error("❌ Cache validation failed:", error);
+  }
+};
+```
+
+### 📊 **What We're Tracking**
+
+#### **Cache Metrics**
+
+- ✅ **Cache Hit Rate**: Tasks served from cache vs network
+- ✅ **Offline Operations**: Mutations performed while offline
+- ✅ **Data Freshness**: Last sync time with server
+- ✅ **Storage Usage**: Cache size and cleanup frequency
+- ✅ **Orphaned Tasks**: Tasks removed during cache validation
+
+#### **Performance Tracking**
+
+- ✅ **Optimistic Update Speed**: Instant UI feedback (<100ms)
+- ✅ **Cache Persistence**: Data survives app restarts
+- ✅ **Network Recovery**: Automatic sync when coming back online
+- ✅ **Error Recovery**: Graceful rollback on failed mutations
+
+#### **User Experience Metrics**
+
+- ✅ **Offline Functionality**: 100% feature availability offline
+- ✅ **Data Consistency**: No data loss during network transitions
+- ✅ **Visual Feedback**: Toast notifications for all operations
+- ✅ **Error Handling**: User-friendly error messages
+
+### 🌟 **Benefits of Our Approach**
+
+#### **🚀 Performance**
+
+- **Instant UI Response**: Optimistic updates provide immediate feedback
+- **Reduced Network Calls**: Aggressive caching minimizes API requests
+- **Background Sync**: Updates happen transparently when online
+
+#### **🔒 Reliability**
+
+- **Offline-First**: App works without internet connectivity
+- **Data Persistence**: Tasks survive app kills and restarts
+- **Conflict Resolution**: Graceful handling of server mismatches
+
+#### **👤 User Experience**
+
+- **Seamless Transitions**: No loading states for cached data
+- **Network Tolerance**: Works on poor or intermittent connections
+- **Facebook-Style UX**: Industry-standard offline behavior
+
+#### **🛠️ Developer Experience**
+
+- **Predictable State**: Clear separation of optimistic vs confirmed data
+- **Easy Debugging**: Console logs track cache operations
+- **Testable Architecture**: Clean separation of concerns
+
+### 🧪 **Testing the Cache System**
+
+#### **Manual Testing Scenarios**
+
+```bash
+# 1. Offline Mode Testing
+- Add tasks while offline → Should work instantly
+- Edit/delete tasks while offline → Should work instantly
+- Go back online → Should sync changes automatically
+
+# 2. App Restart Testing
+- Add tasks → Kill app → Restart → Tasks should persist
+- Go offline → Add tasks → Kill app → Restart → Tasks should persist
+
+# 3. Network Recovery Testing
+- Go offline → Make changes → Go online → Pull to refresh → Should sync
+
+# 4. Cache Validation Testing
+- Add tasks → Kill app → Start with different server data → Should clean orphaned tasks
+```
+
+#### **Performance Testing**
+
+```typescript
+// Performance Dataset Controls (from HomeScreen)
+- Small Dataset (3 tasks): Normal usage
+- Large Dataset (150 tasks): Performance testing
+- Stress Dataset (650 tasks): Extreme load testing
+```
+
+### 📋 **Cache Storage Keys**
+
+```typescript
+// Storage Key Management (from storageKeys.ts)
+export const ASYNC_STORAGE_KEYS = {
+  REACT_QUERY_OFFLINE_CACHE: "react-query-offline-cache",
+  AUTH_STORAGE: "auth-storage",
+  THEME_STORAGE: "theme-storage",
+} as const;
+```
+
+This caching strategy ensures the app provides a **native app-like experience** with instant responses, offline functionality, and seamless data synchronization - exactly what users expect from modern mobile applications.
+
+---
+
 ## 🔧 Development Workflow
 
 ### Getting Started

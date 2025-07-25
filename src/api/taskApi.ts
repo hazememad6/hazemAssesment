@@ -1,5 +1,35 @@
 import { Task } from "src/types/task";
 
+// Small default dataset for normal usage
+const generateSmallTaskDataset = (): Task[] => {
+  return [
+    {
+      id: "1",
+      title: "Complete React Native Assessment",
+      description: "Build a secure mobile task manager with authentication",
+      completed: false,
+      createdAt: "2024-01-15T09:00:00.000Z",
+      updatedAt: "2024-01-15T09:00:00.000Z",
+    },
+    {
+      id: "2",
+      title: "Implement Dark Mode Toggle",
+      description: "Add light/dark theme switching functionality",
+      completed: true,
+      createdAt: "2024-01-15T10:30:00.000Z",
+      updatedAt: "2024-01-15T11:45:00.000Z",
+    },
+    {
+      id: "3",
+      title: "Add Biometric Authentication",
+      description: "Integrate fingerprint/face ID login feature",
+      completed: false,
+      createdAt: "2024-01-15T14:20:00.000Z",
+      updatedAt: "2024-01-15T14:20:00.000Z",
+    },
+  ];
+};
+
 // Generate large dataset for performance testing
 const generateLargeTaskDataset = (): Task[] => {
   const tasks: Task[] = [];
@@ -53,43 +83,47 @@ const generateLargeTaskDataset = (): Task[] => {
   return tasks;
 };
 
-// In-memory storage with large dataset for performance testing
-let TASKS_STORAGE: Task[] = generateLargeTaskDataset();
+// Simple in-memory storage for this session only
+let TASKS_STORAGE: Task[] = generateSmallTaskDataset();
+let CURRENT_DATASET_MODE: "small" | "large" | "stress" = "small";
 
 // Simulate API delay
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const taskApi = {
-  // Get all tasks
+  // Get all tasks - simple memory read
   getTasks: async (): Promise<Task[]> => {
-    await delay(800); // Simulate network delay
+    await delay(500);
     return [...TASKS_STORAGE];
   },
 
-  // Create a new task
-  createTask: async (task: Omit<Task, "id" | "createdAt" | "updatedAt">): Promise<Task> => {
-    await delay(500);
+  // Create a new task - simple memory write
+  createTask: async (taskData: { title: string; description: string; completed: boolean }): Promise<Task> => {
+    await delay(800);
+
     const newTask: Task = {
-      ...task,
-      id: Date.now().toString() + Math.random().toString(36).substring(2),
+      id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      title: taskData.title,
+      description: taskData.description,
+      completed: taskData.completed,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    // Add to in-memory storage
     TASKS_STORAGE.push(newTask);
     return newTask;
   },
 
-  // Update an existing task
+  // Update an existing task - simple memory update
   updateTask: async (id: string, updates: Partial<Task>): Promise<Task> => {
-    await delay(400);
+    await delay(300);
+
     const taskIndex = TASKS_STORAGE.findIndex((t) => t.id === id);
     if (taskIndex === -1) {
       throw new Error("Task not found");
     }
 
-    const updatedTask = {
+    const updatedTask: Task = {
       ...TASKS_STORAGE[taskIndex],
       ...updates,
       updatedAt: new Date().toISOString(),
@@ -99,50 +133,34 @@ export const taskApi = {
     return updatedTask;
   },
 
-  // Delete a task
+  // Delete a task - simple memory delete
   deleteTask: async (id: string): Promise<void> => {
     await delay(300);
-    const taskIndex = TASKS_STORAGE.findIndex((t) => t.id === id);
-    if (taskIndex === -1) {
+    const initialLength = TASKS_STORAGE.length;
+    TASKS_STORAGE = TASKS_STORAGE.filter((t) => t.id !== id);
+    if (TASKS_STORAGE.length >= initialLength) {
       throw new Error("Task not found");
     }
-
-    TASKS_STORAGE.splice(taskIndex, 1);
   },
 
   // Reset to small dataset (for normal testing)
   resetToSmallDataset: async (): Promise<void> => {
-    TASKS_STORAGE = [
-      {
-        id: "1",
-        title: "Complete React Native Assessment",
-        description: "Build a secure mobile task manager with authentication",
-        completed: false,
-        createdAt: "2024-01-15T09:00:00.000Z",
-        updatedAt: "2024-01-15T09:00:00.000Z",
-      },
-      {
-        id: "2",
-        title: "Implement Dark Mode Toggle",
-        description: "Add light/dark theme switching functionality",
-        completed: true,
-        createdAt: "2024-01-15T10:30:00.000Z",
-        updatedAt: "2024-01-15T11:45:00.000Z",
-      },
-      {
-        id: "3",
-        title: "Add Biometric Authentication",
-        description: "Integrate fingerprint/face ID login feature",
-        completed: false,
-        createdAt: "2024-01-15T14:20:00.000Z",
-        updatedAt: "2024-01-15T14:20:00.000Z",
-      },
-    ];
+    TASKS_STORAGE = generateSmallTaskDataset();
+    CURRENT_DATASET_MODE = "small";
+    console.log("📊 Dataset reset to SMALL (3 tasks)");
+  },
+
+  // Load large dataset for performance testing
+  loadLargeDataset: async (): Promise<void> => {
+    TASKS_STORAGE = generateLargeTaskDataset();
+    CURRENT_DATASET_MODE = "large";
+    console.log("📊 Dataset loaded: LARGE (150 tasks)");
   },
 
   // Add more test data for stress testing
   generateStressTestData: async (count: number = 500): Promise<void> => {
     TASKS_STORAGE = generateLargeTaskDataset();
+    CURRENT_DATASET_MODE = "stress";
 
     // Add even more for stress testing
     const extraTasks = [];
@@ -158,5 +176,14 @@ export const taskApi = {
     }
 
     TASKS_STORAGE.push(...extraTasks);
+    console.log(`📊 Dataset loaded: STRESS (${TASKS_STORAGE.length} tasks)`);
+  },
+
+  // Debug method to get current dataset info
+  getDatasetInfo: (): { mode: typeof CURRENT_DATASET_MODE; count: number } => {
+    return {
+      mode: CURRENT_DATASET_MODE,
+      count: TASKS_STORAGE.length,
+    };
   },
 };

@@ -1,13 +1,14 @@
-import React, { useState } from "react";
 import { Alert, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { taskApi } from "@api/taskApi";
-import { Button } from "@components/atoms";
+import React, { useState } from "react";
+
 import { AddTaskModal } from "@components/molecules";
+import { Button } from "@components/atoms";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { TaskList } from "@components/organisms/TaskList";
-import { useThemeStore } from "@store/themeStore";
-import { useTasksFeature } from "./hooks/useTasks";
+import { taskApi } from "@api/taskApi";
 import { useHomeScreenStyles } from "./styles";
+import { useTasksFeature } from "./hooks/useTasks";
+import { useThemeStore } from "@store/themeStore";
 
 export default function HomeScreen() {
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
@@ -33,26 +34,48 @@ export default function HomeScreen() {
 
   const handleDatasetTest = async (type: "small" | "large" | "stress") => {
     try {
-      Alert.alert("Dataset Test", `Loading ${type} dataset...`, [{ text: "OK" }]);
+      if (type !== "small") {
+        // Warn user about data loss for performance testing
+        Alert.alert(
+          "⚠️ Performance Testing",
+          `This will load ${type === "large" ? "150" : "650+"} test tasks for performance evaluation.\n\n⚠️ Your current tasks will be replaced!\n\nUse "Small (3)" to return to normal mode.`,
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: `Load ${type === "large" ? "150" : "650+"} Tasks`,
+              style: "destructive",
+              onPress: () => executeDatasetSwitch(type),
+            },
+          ]
+        );
+        return;
+      }
 
+      await executeDatasetSwitch(type);
+    } catch (err) {
+      console.error("Dataset test failed:", err);
+      Alert.alert("Error", "Failed to load test dataset");
+    }
+  };
+
+  const executeDatasetSwitch = async (type: "small" | "large" | "stress") => {
+    try {
       if (type === "small") {
         await taskApi.resetToSmallDataset();
       } else if (type === "large") {
-        // Already has 150 tasks by default
+        await taskApi.loadLargeDataset();
       } else if (type === "stress") {
         await taskApi.generateStressTestData(500);
       }
 
-      // Refresh the list
+      // Refresh to get new data
       await handleRefresh();
 
-      Alert.alert(
-        "Dataset Loaded",
-        `${type === "small" ? "3" : type === "large" ? "150" : "650"} tasks loaded for performance testing`
-      );
+      const info = taskApi.getDatasetInfo();
+      Alert.alert("Dataset Loaded ✅", `Mode: ${info.mode.toUpperCase()}\nTasks: ${info.count}`);
     } catch (err) {
-      console.error("Dataset test failed:", err);
-      Alert.alert("Error", "Failed to load test dataset");
+      console.error("Dataset switch failed:", err);
+      Alert.alert("Error", "Failed to switch dataset");
     }
   };
 
@@ -89,12 +112,10 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Debug Options Panel */}
+      {/* Performance Testing Panel */}
       {showDebugOptions && (
         <View style={styles.debugPanel}>
           <Text style={styles.debugTitle}>Performance Testing</Text>
-
-          {/* Dataset Controls */}
           <View style={styles.debugButtons}>
             <Button title="Small (3)" onPress={() => handleDatasetTest("small")} variant="outline" size="small" />
             <Button title="Large (150)" onPress={() => handleDatasetTest("large")} variant="outline" size="small" />
